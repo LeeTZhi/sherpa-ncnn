@@ -80,6 +80,19 @@ SHERPA_NCNN_API typedef struct SherpaNcnnModelConfig {
   /// Path to tokens.txt
   const char *tokens;
 
+  ///add memory buffer for ncnn model
+  const unsigned char *encoder_param_buffer;
+  const unsigned char *encoder_bin_buffer;
+  const unsigned char *decoder_param_buffer;
+  const unsigned char *decoder_bin_buffer;
+  const unsigned char *joiner_param_buffer;
+  const unsigned char *joiner_bin_buffer;
+  ///token buffer
+  const unsigned char *tokens_buffer;
+
+  ///flag for buffer or file path
+  int32_t buffer_flag;
+  
   /// If it is non-zero, and it has GPU available, and ncnn is built
   /// with vulkan, then it will use GPU for computation.
   /// Otherwise, it uses CPU for computation.

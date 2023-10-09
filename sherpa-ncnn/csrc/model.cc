@@ -136,6 +136,19 @@ void Model::InitNet(ncnn::Net &net, const std::string &param,
   }
 }
 
+void Model::InitNet(ncnn::Net &net, const unsigned char *param_buf,
+                      const unsigned char *bin_buf) {
+  
+  if (net.load_param(param_buf) == 0 ) {
+    NCNN_LOGE("failed to load param_buf");
+    exit(-1);
+  }
+  if (net.load_model(bin_buf) == 0 ) {
+    NCNN_LOGE("failed to load bin_buf");
+    exit(-1);
+  }
+}
+
 #if __ANDROID_API__ >= 9
 void Model::InitNet(AAssetManager *mgr, ncnn::Net &net,
                     const std::string &param, const std::string &bin) {
@@ -170,11 +183,20 @@ std::unique_ptr<Model> Model::Create(const ModelConfig &config) {
   ncnn::Net net;
   RegisterCustomLayers(net);
 
-  auto ret = net.load_param(config.encoder_param.c_str());
-  if (ret != 0) {
-    NCNN_LOGE("Failed to load %s", config.encoder_param.c_str());
-    return nullptr;
+  if ( config.use_buffer ) {
+    auto ret = net.load_param(config.encoder_param_buf);
+    if (ret == 0) {
+      NCNN_LOGE("Failed to load %s", config.encoder_param.c_str());
+      return nullptr;
+    }
+  } else {
+    auto ret = net.load_param(config.encoder_param.c_str());
+    if (ret != 0) {
+      NCNN_LOGE("Failed to load %s", config.encoder_param.c_str());
+      return nullptr;
+    }
   }
+  
 
   if (IsLstmModel(net)) {
     return std::make_unique<LstmModel>(config);

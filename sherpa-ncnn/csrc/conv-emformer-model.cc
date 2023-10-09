@@ -36,10 +36,18 @@ ConvEmformerModel::ConvEmformerModel(const ModelConfig &config) {
     //           static_cast<int32_t>(config.use_vulkan_compute));
   }
 
-  InitEncoder(config.encoder_param, config.encoder_bin);
-  InitDecoder(config.decoder_param, config.decoder_bin);
-  InitJoiner(config.joiner_param, config.joiner_bin);
-
+  if ( config.use_buffer) {
+    ///initial the model directly from buffer
+    InitNet(encoder_, config.encoder_param_buf, config.encoder_bin_buf);
+    InitNet(decoder_, config.decoder_param_buf, config.decoder_bin_buf);
+    InitNet(joiner_, config.joiner_param_buf, config.joiner_bin_buf);
+  }
+  else {
+    InitEncoder(config.encoder_param, config.encoder_bin);
+    InitDecoder(config.decoder_param, config.decoder_bin);
+    InitJoiner(config.joiner_param, config.joiner_bin);
+  }
+  
   InitEncoderInputOutputIndexes();
   InitDecoderInputOutputIndexes();
   InitJoinerInputOutputIndexes();

@@ -81,6 +81,20 @@ SherpaNcnnRecognizer *CreateRecognizer(
   config.feat_config.sampling_rate = in_config->feat_config.sampling_rate;
   config.feat_config.feature_dim = in_config->feat_config.feature_dim;
 
+  ///ncnn model memory buffer
+  config.model_config.encoder_param_buf =
+      in_config->model_config.encoder_param_buffer;
+  config.model_config.encoder_bin_buf = in_config->model_config.encoder_bin_buffer;
+  config.model_config.decoder_param_buf =
+      in_config->model_config.decoder_param_buffer;
+  config.model_config.decoder_bin_buf = in_config->model_config.decoder_bin_buffer;
+  config.model_config.joiner_param_buf =
+      in_config->model_config.joiner_param_buffer;
+  config.model_config.joiner_bin_buf = in_config->model_config.joiner_bin_buffer;
+  config.model_config.tokens_buf = in_config->model_config.tokens_buffer;
+  ///flag 
+  config.model_config.use_buffer = static_cast<bool>(in_config->model_config.buffer_flag);
+
   auto recognizer = std::make_unique<sherpa_ncnn::Recognizer>(config);
   if (!recognizer->GetModel()) {
     return nullptr;
