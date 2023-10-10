@@ -19,6 +19,7 @@
 
 #include "sherpa-ncnn/csrc/recognizer.h"
 
+#include <fstream>
 #include <memory>
 #include <string>
 #include <utility>
@@ -27,6 +28,14 @@
 #include "sherpa-ncnn/csrc/decoder.h"
 #include "sherpa-ncnn/csrc/greedy-search-decoder.h"
 #include "sherpa-ncnn/csrc/modified-beam-search-decoder.h"
+
+#if __ANDROID_API__ >= 9
+#include <strstream>
+
+#include "android/asset_manager.h"
+#include "android/asset_manager_jni.h"
+#include "android/log.h"
+#endif
 
 namespace sherpa_ncnn {
 
@@ -76,7 +85,9 @@ std::string RecognizerConfig::ToString() const {
   os << "model_config=" << model_config.ToString() << ", ";
   os << "decoder_config=" << decoder_config.ToString() << ", ";
   os << "endpoint_config=" << endpoint_config.ToString() << ", ";
-  os << "enable_endpoint=" << (enable_endpoint ? "True" : "False") << ")";
+  os << "enable_endpoint=" << (enable_endpoint ? "True" : "False") << ", ";
+  os << "hotwords_file=\"" << hotwords_file << "\", ";
+  os << "hotwrods_score=" << hotwords_score << ")";
 
   return os.str();
 }
@@ -92,6 +103,10 @@ class Recognizer::Impl {
     } else if (config.decoder_config.method == "modified_beam_search") {
       decoder_ = std::make_unique<ModifiedBeamSearchDecoder>(
           model_.get(), config.decoder_config.num_active_paths);
+
+      if (!config_.hotwords_file.empty()) {
+        InitHotwords();
+      }
     } else {
       NCNN_LOGE("Unsupported method: %s", config.decoder_config.method.c_str());
       exit(-1);
@@ -115,6 +130,10 @@ class Recognizer::Impl {
     } else if (config.decoder_config.method == "modified_beam_search") {
       decoder_ = std::make_unique<ModifiedBeamSearchDecoder>(
           model_.get(), config.decoder_config.num_active_paths);
+
+      if (!config_.hotwords_file.empty()) {
+        InitHotwords(mgr);
+      }
     } else {
       NCNN_LOGE("Unsupported method: %s", config.decoder_config.method.c_str());
       exit(-1);
@@ -123,10 +142,32 @@ class Recognizer::Impl {
 #endif
 
   std::unique_ptr<Stream> CreateStream() const {
-    auto stream = std::make_unique<Stream>(config_.feat_config);
-    stream->SetResult(decoder_->GetEmptyResult());
-    stream->SetStates(model_->GetEncoderInitStates());
-    return stream;
+    if (hotwords_.empty()) {
+      auto stream = std::make_unique<Stream>(config_.feat_config);
+      stream->SetResult(decoder_->GetEmptyResult());
+      stream->SetStates(model_->GetEncoderInitStates());
+      return stream;
+    } else {
+      auto r = decoder_->GetEmptyResult();
+
+      auto context_graph =
+          std::make_shared<ContextGraph>(hotwords_, config_.hotwords_score);
+
+      auto stream =
+          std::make_unique<Stream>(config_.feat_config, context_graph);
+
+      if (stream->GetContextGraph()) {
+        // r.hyps has only one element.
+        for (auto it = r.hyps.begin(); it != r.hyps.end(); ++it) {
+          it->second.context_state = stream->GetContextGraph()->Root();
+        }
+      }
+
+      stream->SetResult(r);
+      stream->SetStates(model_->GetEncoderInitStates());
+
+      return stream;
+    }
   }
 
   bool IsReady(Stream *s) const {
@@ -143,9 +184,13 @@ class Recognizer::Impl {
 
     ncnn::Mat encoder_out;
     std::tie(encoder_out, states) = model_->RunEncoder(features, states);
-    s->SetStates(states);
 
-    decoder_->Decode(encoder_out, &s->GetResult());
+    if (s->GetContextGraph()) {
+      decoder_->Decode(encoder_out, s, &s->GetResult());
+    } else {
+      decoder_->Decode(encoder_out, &s->GetResult());
+    }
+    s->SetStates(states);
   }
 
   bool IsEndpoint(Stream *s) const {
@@ -163,9 +208,16 @@ class Recognizer::Impl {
   }
 
   void Reset(Stream *s) const {
+    auto r = decoder_->GetEmptyResult();
+
+    if (s->GetContextGraph()) {
+      for (auto it = r.hyps.begin(); it != r.hyps.end(); ++it) {
+        it->second.context_state = s->GetContextGraph()->Root();
+      }
+    }
     // Caution: We need to keep the decoder output state
     ncnn::Mat decoder_out = s->GetResult().decoder_out;
-    s->SetResult(decoder_->GetEmptyResult());
+    s->SetResult(r);
     s->GetResult().decoder_out = decoder_out;
 
     // don't reset encoder state
@@ -190,11 +242,68 @@ class Recognizer::Impl {
   const Model *GetModel() const { return model_.get(); }
 
  private:
+#if __ANDROID_API__ >= 9
+  void InitHotwords(AAssetManager *mgr) {
+    AAsset *asset = AAssetManager_open(mgr, config_.hotwords_file.c_str(),
+                                       AASSET_MODE_BUFFER);
+    if (!asset) {
+      __android_log_print(ANDROID_LOG_FATAL, "sherpa-ncnn",
+                          "hotwords_file: Load %s failed",
+                          config_.hotwords_file.c_str());
+      exit(-1);
+    }
+
+    auto p = reinterpret_cast<const char *>(AAsset_getBuffer(asset));
+    size_t asset_length = AAsset_getLength(asset);
+    std::istrstream is(p, asset_length);
+    InitHotwords(is);
+    AAsset_close(asset);
+  }
+#endif
+
+  void InitHotwords() {
+    // each line in hotwords_file contains space-separated words
+
+    std::ifstream is(config_.hotwords_file);
+    if (!is) {
+      NCNN_LOGE("Open hotwords file failed: %s", config_.hotwords_file.c_str());
+      exit(-1);
+    }
+
+    InitHotwords(is);
+  }
+
+  void InitHotwords(std::istream &is) {
+    std::vector<int32_t> tmp;
+    std::string line;
+    std::string word;
+
+    while (std::getline(is, line)) {
+      std::istringstream iss(line);
+      while (iss >> word) {
+        if (sym_.contains(word)) {
+          int32_t number = sym_[word];
+          tmp.push_back(number);
+        } else {
+          NCNN_LOGE(
+              "Cannot find ID for hotword %s at line: %s. (Hint: words on the "
+              "same line are separated by spaces)",
+              word.c_str(), line.c_str());
+          exit(-1);
+        }
+      }
+
+      hotwords_.push_back(std::move(tmp));
+    }
+  }
+
+ private:
   RecognizerConfig config_;
   std::unique_ptr<Model> model_;
   std::unique_ptr<Decoder> decoder_;
   Endpoint endpoint_;
   SymbolTable sym_;
+  std::vector<std::vector<int32_t>> hotwords_;
 };
 
 Recognizer::Recognizer(const RecognizerConfig &config)

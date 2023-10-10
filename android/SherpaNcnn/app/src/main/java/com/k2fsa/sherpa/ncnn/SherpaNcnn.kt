@@ -33,6 +33,8 @@ data class RecognizerConfig(
     var rule1MinTrailingSilence: Float = 2.4f,
     var rule2MinTrailingSilence: Float = 1.0f,
     var rule3MinUtteranceLength: Float = 30.0f,
+    var hotwordsFile: String = "",
+    var hotwordsScore: Float = 1.5f,
 )
 
 class SherpaNcnn(
@@ -62,7 +64,7 @@ class SherpaNcnn(
 
     fun inputFinished() = inputFinished(ptr)
     fun isEndpoint(): Boolean = isEndpoint(ptr)
-    fun reset() = reset(ptr)
+    fun reset(recreate: Boolean = false) = reset(ptr, recreate = recreate)
 
     val text: String
         get() = getText(ptr)
@@ -80,9 +82,9 @@ class SherpaNcnn(
     private external fun acceptWaveform(ptr: Long, samples: FloatArray, sampleRate: Float)
     private external fun inputFinished(ptr: Long)
     private external fun isReady(ptr: Long): Boolean
-    private external fun decode(ptr: Long): Boolean
+    private external fun decode(ptr: Long)
     private external fun isEndpoint(ptr: Long): Boolean
-    private external fun reset(ptr: Long): Boolean
+    private external fun reset(ptr: Long, recreate: Boolean)
     private external fun getText(ptr: Long): String
 
     companion object {
@@ -118,6 +120,11 @@ fun getDecoderConfig(method: String, numActivePaths: Int): DecoderConfig {
 2 - https://huggingface.co/csukuangfj/sherpa-ncnn-streaming-zipformer-bilingual-zh-en-2023-02-13
     This model supports both English and Chinese
 
+3 - https://huggingface.co/csukuangfj/sherpa-ncnn-streaming-zipformer-en-2023-02-13
+    This model supports only English
+
+4 - https://huggingface.co/shaojieli/sherpa-ncnn-streaming-zipformer-fr-2023-04-14
+    This model supports only French
 
 Please follow
 https://k2-fsa.github.io/sherpa/ncnn/pretrained_models/index.html
@@ -157,6 +164,36 @@ fun getModelConfig(type: Int, useGPU: Boolean): ModelConfig? {
 
         2 -> {
             val modelDir = "sherpa-ncnn-streaming-zipformer-bilingual-zh-en-2023-02-13"
+            return ModelConfig(
+                encoderParam = "$modelDir/encoder_jit_trace-pnnx.ncnn.param",
+                encoderBin = "$modelDir/encoder_jit_trace-pnnx.ncnn.bin",
+                decoderParam = "$modelDir/decoder_jit_trace-pnnx.ncnn.param",
+                decoderBin = "$modelDir/decoder_jit_trace-pnnx.ncnn.bin",
+                joinerParam = "$modelDir/joiner_jit_trace-pnnx.ncnn.param",
+                joinerBin = "$modelDir/joiner_jit_trace-pnnx.ncnn.bin",
+                tokens = "$modelDir/tokens.txt",
+                numThreads = 1,
+                useGPU = useGPU,
+            )
+        }
+
+        3 -> {
+            val modelDir = "sherpa-ncnn-streaming-zipformer-en-2023-02-13"
+            return ModelConfig(
+                encoderParam = "$modelDir/encoder_jit_trace-pnnx.ncnn.param",
+                encoderBin = "$modelDir/encoder_jit_trace-pnnx.ncnn.bin",
+                decoderParam = "$modelDir/decoder_jit_trace-pnnx.ncnn.param",
+                decoderBin = "$modelDir/decoder_jit_trace-pnnx.ncnn.bin",
+                joinerParam = "$modelDir/joiner_jit_trace-pnnx.ncnn.param",
+                joinerBin = "$modelDir/joiner_jit_trace-pnnx.ncnn.bin",
+                tokens = "$modelDir/tokens.txt",
+                numThreads = 1,
+                useGPU = useGPU,
+            )
+        }
+
+        4 -> {
+            val modelDir = "sherpa-ncnn-streaming-zipformer-fr-2023-04-14"
             return ModelConfig(
                 encoderParam = "$modelDir/encoder_jit_trace-pnnx.ncnn.param",
                 encoderBin = "$modelDir/encoder_jit_trace-pnnx.ncnn.bin",

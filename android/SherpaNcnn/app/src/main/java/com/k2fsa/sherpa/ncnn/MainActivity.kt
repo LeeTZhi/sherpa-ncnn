@@ -92,12 +92,13 @@ class MainActivity : AppCompatActivity() {
             audioRecord!!.startRecording()
             recordButton.setText(R.string.stop)
             isRecording = true
-            model.reset()
             textView.text = ""
             lastText = ""
             idx = 0
 
             recordingThread = thread(true) {
+                model.reset(true)
+
                 processSamples()
             }
             Log.i(TAG, "Started recording")
@@ -126,25 +127,29 @@ class MainActivity : AppCompatActivity() {
                 while (model.isReady()) {
                     model.decode()
                 }
+                val isEndpoint = model.isEndpoint()
+                val text = model.text
+                var textToDisplay = lastText
+
+                if (text.isNotBlank()) {
+                    if (lastText.isBlank()) {
+                        textToDisplay = "${idx}: ${text}"
+                    } else {
+                        textToDisplay = "${lastText}\n${idx}: ${text}"
+                    }
+                }
+
+                if (isEndpoint) {
+                    model.reset()
+                    if (text.isNotBlank()) {
+                        lastText = "${lastText}\n${idx}: ${text}"
+                        textToDisplay = lastText
+                        idx += 1
+                    }
+                }
 
                 runOnUiThread {
-                    val isEndpoint = model.isEndpoint()
-                    val text = model.text
-                    if (text.isNotBlank()) {
-                        if (lastText.isBlank()) {
-                            textView.text = "${idx}: ${text}"
-                        } else {
-                            textView.text = "${lastText}\n${idx}: ${text}"
-                        }
-                    }
-
-                    if (isEndpoint) {
-                        model.reset()
-                        if (text.isNotBlank()) {
-                            lastText = "${lastText}\n${idx}: ${text}"
-                            idx += 1
-                        }
-                    }
+                    textView.text = textToDisplay
                 }
             }
         }
@@ -182,7 +187,7 @@ class MainActivity : AppCompatActivity() {
             featureDim = 80
         )
         //Please change the argument "type" if you use a different model
-        val modelConfig = getModelConfig(type = 2, useGPU = useGPU)!!
+        val modelConfig = getModelConfig(type = 1, useGPU = useGPU)!!
         val decoderConfig = getDecoderConfig(method = "greedy_search", numActivePaths = 4)
 
         val config = RecognizerConfig(
