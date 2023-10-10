@@ -40,6 +40,7 @@ class SymbolTable {
   ///
   /// Fields are separated by space(s).
   explicit SymbolTable(const std::string &filename);
+  explicit SymbolTable(const unsigned char *data, size_t size); 
 
 #if __ANDROID_API__ >= 9
   SymbolTable(AAssetManager *mgr, const std::string &filename);

@@ -86,8 +86,7 @@ class Recognizer::Impl {
   explicit Impl(const RecognizerConfig &config)
       : config_(config),
         model_(Model::Create(config.model_config)),
-        endpoint_(config.endpoint_config),
-        sym_(config.model_config.tokens) {
+        endpoint_(config.endpoint_config) {
     if (config.decoder_config.method == "greedy_search") {
       decoder_ = std::make_unique<GreedySearchDecoder>(model_.get());
     } else if (config.decoder_config.method == "modified_beam_search") {
@@ -96,6 +95,12 @@ class Recognizer::Impl {
     } else {
       NCNN_LOGE("Unsupported method: %s", config.decoder_config.method.c_str());
       exit(-1);
+    }
+    if (config.model_config.use_buffer) {
+      sym_ = SymbolTable(config.model_config.tokens_buf, config.model_config.tokens_buf_size);
+    }
+    else {
+      sym_ = SymbolTable(config.model_config.tokens);
     }
   }
 

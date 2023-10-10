@@ -89,6 +89,7 @@ SHERPA_NCNN_API typedef struct SherpaNcnnModelConfig {
   const unsigned char *joiner_bin_buffer;
   ///token buffer
   const unsigned char *tokens_buffer;
+  uint32_t  tokens_buffer_size;
 
   ///flag for buffer or file path
   int32_t buffer_flag;
