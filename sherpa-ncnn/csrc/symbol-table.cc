@@ -36,6 +36,11 @@ SymbolTable::SymbolTable(const std::string &filename) {
   Init(is);
 }
 
+SymbolTable::SymbolTable(const unsigned char *data, size_t size) {
+  std::istringstream is(std::string(reinterpret_cast<const char*>(data), size));
+  Init(is);
+}
+
 #if __ANDROID_API__ >= 9
 SymbolTable::SymbolTable(AAssetManager *mgr, const std::string &filename) {
   AAsset *asset = AAssetManager_open(mgr, filename.c_str(), AASSET_MODE_BUFFER);

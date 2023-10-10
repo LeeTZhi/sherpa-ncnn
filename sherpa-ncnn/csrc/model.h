@@ -47,7 +47,8 @@ struct ModelConfig {
   const unsigned char *joiner_bin_buf;
   /// token buffer
   const unsigned char *tokens_buf;
-
+  size_t tokens_buf_size;
+  
   ///flag for using buffer
   bool use_buffer = true;
 
@@ -148,7 +149,7 @@ class Model {
  protected:
   static void InitNet(ncnn::Net &net, const std::string &param,
                       const std::string &bin);
-                      
+
   /// initialize net with buffer
   static void InitNet(ncnn::Net &net, const unsigned char *param_buf,
                       const unsigned char *bin_buf);
