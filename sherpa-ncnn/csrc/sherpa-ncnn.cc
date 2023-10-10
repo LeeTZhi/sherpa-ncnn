@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <chrono>  // NOLINT
+#include <fstream>
 #include <iostream>
 
 #include "net.h"  // NOLINT
@@ -28,7 +29,7 @@
 #include "sherpa-ncnn/csrc/wave-reader.h"
 
 int32_t main(int32_t argc, char *argv[]) {
-  if (argc < 9 || argc > 11) {
+  if (argc < 9 || argc > 13) {
     const char *usage = R"usage(
 Usage:
   ./bin/sherpa-ncnn \
@@ -66,21 +67,29 @@ for a list of pre-trained models to download.
   config.model_config.joiner_opt.num_threads = num_threads;
 
   float expected_sampling_rate = 16000;
-  if (argc == 11) {
+  if (argc >= 11) {
     std::string method = argv[10];
     if (method == "greedy_search" || method == "modified_beam_search") {
       config.decoder_config.method = method;
     }
   }
 
+  if (argc >= 12) {
+    config.hotwords_file = argv[11];
+  }
+
+  if (argc == 13) {
+    config.hotwords_score = atof(argv[12]);
+  }
+
   config.feat_config.sampling_rate = expected_sampling_rate;
   config.feat_config.feature_dim = 80;
+
+  std::cout << config.ToString() << "\n";
 
   sherpa_ncnn::Recognizer recognizer(config);
 
   std::string wav_filename = argv[8];
-
-  std::cout << config.ToString() << "\n";
 
   bool is_ok = false;
   std::vector<float> samples =
@@ -96,7 +105,6 @@ for a list of pre-trained models to download.
 
   auto begin = std::chrono::steady_clock::now();
   std::cout << "Started!\n";
-
   auto stream = recognizer.CreateStream();
   stream->AcceptWaveform(expected_sampling_rate, samples.data(),
                          samples.size());
