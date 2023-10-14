@@ -3,9 +3,6 @@
 
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // See https://github.com/pytorch/pytorch/blob/main/c10/macros/Export.h
 // We will set SHERPA_NCNN_BUILD_SHARED_LIBS and SHERPA_NCNN_BUILD_MAIN_LIB in
@@ -31,6 +28,11 @@ extern "C" {
 #define ASR_API_API ASR_API_IMPORT
 #endif
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum ASR_Version { FAST=0x01, ACCURATE=0x02 };
 
 ///struct 
@@ -42,33 +44,108 @@ typedef struct ASR_Parameters
     char reserved[256];
 } ASR_Parameters;
 
+typedef struct ASR_Result
+{
+    int32_t size;
+    int32_t result_size;
+    int32_t result_capacity;
+    char* result;
+    int32_t reserved[256];
+} ASR_Result;
+
 ///API
-/* 
- * CreateASRObject
- * @param parameters: ASR_Parameters
- * @param authToken: auth token
- * @return: void*
- */
-void* CreateASRObject(const ASR_Parameters* parameters, const char* authToken);
+
+ASR_API_EXPORT void* CreateStreamASRObject(
+    const ASR_Parameters* parameters,
+    const char* authToken,
+    const int authTokenLen
+    );
 
 /* 
- * DestroyASRObject
- * @param asr: void*
- * @return: void
- */
-void DestroyASRObject(void* asr);
+    * DestroyStreamASRObject
+    * @param streamASR: void*
+    * @return: void
+*/
+ASR_API_EXPORT void DestroyStreamASRObject(void* streamASR);
 
 /*
-  Create Stream ASR Object 
-    @param parameters: ASR_Parameters
-    @param asrObject: void*
-    @return: void*
+ * Streaming recognize, if isEndPoint is true, the results will be stored in result, after get the results, 
+ * you should call DestroyASRResult to free the memory
+    * @param streamASR: void*  
+    * @param audioData: audio data
+    * @param audioDataLen: audio data length
+    * @param isFinalStream: whether is the final streams, if true, the recoginze will be end and reset
+    * @param result: ASR_Result
+    * @param isEndPoint: is end point
+    * If Success, return 0, else return other error code   
 */
-void* CreateStreamASRObject(const ASR_Parameters* parameters, void* asrObject);
+ASR_API_EXPORT int StreamRecognize(
+    void* streamASR, 
+    const int16_t* audioData, 
+    int audioDataLen, 
+    int isFinalStream,
+    ASR_Result* result, 
+    int* isEndPoint
+    );
+
+/*
+    * release the memory of ASR_Result
+    * @param result: ASR_Result
+    * If Success, return 0, else return other error code   
+*/
+ASR_API_EXPORT int DestroyASRResult(ASR_Result* result);
+
+/* reset the stream recognize
+    * @param streamASR: void*
+    * @return: If Success, return 0, else return other error code   
+*/
+ASR_API_EXPORT int ResetStreamASR(void* streamASR);
 
 
 #ifdef __cplusplus
-}
+
+class ASRClass {
+public:
+    ASRClass() {
+        streamASRObject = nullptr;
+    }
+
+    int Init(const ASR_Parameters* parameters, const char* authToken, const int authTokenLen) {
+        
+
+        streamASRObject = CreateStreamASRObject(parameters, authToken, authTokenLen);
+        if ( streamASRObject == nullptr ) {
+            return -1;
+        }
+    }
+
+    ~ASRClass() {
+        if ( streamASRObject != nullptr ) {
+            DestroyStreamASRObject(streamASRObject);
+            streamASRObject = nullptr;
+        }
+    }
+
+    int StreamRecognize(
+        const int16_t* audioData, 
+        int audioDataLen, 
+        int isFinalStream,
+        ASR_Result* result, 
+        int* isEndPoint
+        ) {
+        return ::StreamRecognize(streamASRObject, audioData, audioDataLen, isFinalStream, result, isEndPoint);
+    }
+
+    int ResetStreamASR() {
+        return ::ResetStreamASR(streamASRObject);
+    }
+
+protected:
+    void* asrObject;
+    void* streamASRObject;
+};
+
+} //extern "C"
 #endif
 
 #endif // ASR_API_H
