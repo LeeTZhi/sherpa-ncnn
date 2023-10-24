@@ -83,6 +83,7 @@ ASR_API_EXPORT int StreamRecognize(
     void* streamASR, 
     const int16_t* audioData, 
     int audioDataLen, 
+    float sampleRate,
     int isFinalStream,
     ASR_Result* result, 
     int* isEndPoint
