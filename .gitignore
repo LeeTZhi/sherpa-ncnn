@@ -116,3 +116,5 @@ generate-int8-*.sh
 cmake-build-release
 cmake-build-debug
 
+sherpa-ncnn/c-api/model/*
+

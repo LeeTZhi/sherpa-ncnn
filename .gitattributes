@@ -1,3 +1,4 @@
 sherpa-ncnn/c-api/model/encoder_mem_larger.h filter=lfs diff=lfs merge=lfs -text
 sherpa-ncnn/c-api/model/decoder_mem_larger.h filter=lfs diff=lfs merge=lfs -text
 sherpa-ncnn/c-api/model/jointer_mem_larger.h filter=lfs diff=lfs merge=lfs -text
+sherpa-ncnn/c-api/model/tokens_file_larger.h filter=lfs diff=lfs merge=lfs -text
