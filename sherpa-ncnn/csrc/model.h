@@ -38,7 +38,6 @@ struct ModelConfig {
   std::string tokens;         // path to tokens.txt
   bool use_vulkan_compute = true;
 
-<<<<<<< HEAD
   /// memory buffer for ncnn model
   const unsigned char *encoder_param_buf;
   const unsigned char *encoder_bin_buf;
@@ -53,8 +52,7 @@ struct ModelConfig {
   ///flag for using buffer
   bool use_buffer = true;
 
-=======
->>>>>>> 61664c7bd2a8afe2622fc101bba06a3667fb60ee
+
   ncnn::Option encoder_opt;
   ncnn::Option decoder_opt;
   ncnn::Option joiner_opt;
@@ -153,13 +151,11 @@ class Model {
   static void InitNet(ncnn::Net &net, const std::string &param,
                       const std::string &bin);
 
-<<<<<<< HEAD
   /// initialize net with buffer
   static void InitNet(ncnn::Net &net, const unsigned char *param_buf,
                       const unsigned char *bin_buf);
 
-=======
->>>>>>> 61664c7bd2a8afe2622fc101bba06a3667fb60ee
+
 #if __ANDROID_API__ >= 9
   static void InitNet(AAssetManager *mgr, ncnn::Net &net,
                       const std::string &param, const std::string &bin);
