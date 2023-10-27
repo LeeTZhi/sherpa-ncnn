@@ -36,6 +36,7 @@ ZipformerModel::ZipformerModel(const ModelConfig &config) {
     //           static_cast<int32_t>(config.use_vulkan_compute));
   }
 
+<<<<<<< HEAD
   if (config.use_buffer) {
     ///initial the model directly from buffer
     InitNet(encoder_, config.encoder_param_buf, config.encoder_bin_buf);
@@ -47,6 +48,12 @@ ZipformerModel::ZipformerModel(const ModelConfig &config) {
     InitJoiner(config.joiner_param, config.joiner_bin);
   }
   
+=======
+  InitEncoder(config.encoder_param, config.encoder_bin);
+  InitDecoder(config.decoder_param, config.decoder_bin);
+  InitJoiner(config.joiner_param, config.joiner_bin);
+
+>>>>>>> 61664c7bd2a8afe2622fc101bba06a3667fb60ee
   InitEncoderInputOutputIndexes();
   InitDecoderInputOutputIndexes();
   InitJoinerInputOutputIndexes();

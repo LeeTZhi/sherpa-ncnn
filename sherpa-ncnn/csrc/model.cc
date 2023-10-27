@@ -183,6 +183,7 @@ std::unique_ptr<Model> Model::Create(const ModelConfig &config) {
   ncnn::Net net;
   RegisterCustomLayers(net);
 
+<<<<<<< HEAD
   if ( config.use_buffer ) {
     auto ret = net.load_param(config.encoder_param_buf);
     if (ret == 0) {
@@ -197,6 +198,13 @@ std::unique_ptr<Model> Model::Create(const ModelConfig &config) {
     }
   }
   
+=======
+  auto ret = net.load_param(config.encoder_param.c_str());
+  if (ret != 0) {
+    NCNN_LOGE("Failed to load %s", config.encoder_param.c_str());
+    return nullptr;
+  }
+>>>>>>> 61664c7bd2a8afe2622fc101bba06a3667fb60ee
 
   if (IsLstmModel(net)) {
     return std::make_unique<LstmModel>(config);
