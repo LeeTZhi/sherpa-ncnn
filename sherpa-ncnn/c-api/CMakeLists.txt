@@ -17,4 +17,4 @@ install(FILES c-api.h
 add_library(asr-api asr_api_impl.cc c-api-internal.cc)
 target_link_libraries(asr-api sherpa-ncnn-core)
 install(TARGETS asr-api DESTINATION lib)
-install(FILES asr-api.h DESTINATION include/sherpa-ncnn/c-api)
+install(FILES asr_api.h DESTINATION include/sherpa-ncnn/c-api)
