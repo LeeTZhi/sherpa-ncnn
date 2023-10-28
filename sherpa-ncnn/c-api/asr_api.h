@@ -127,7 +127,7 @@ public:
         }
     }
 
-    int StreamRecognize(
+    int StreamRecognize_(
         const int16_t* audioData, 
         int audioDataLen, 
         int isFinalStream,
@@ -137,7 +137,7 @@ public:
         return ::StreamRecognize(streamASRObject, audioData, audioDataLen, isFinalStream, result, isEndPoint);
     }
 
-    int ResetStreamASR() {
+    int ResetStreamASR_() {
         return ::ResetStreamASR(streamASRObject);
     }
 

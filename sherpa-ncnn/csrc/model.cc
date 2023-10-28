@@ -149,18 +149,6 @@ void Model::InitNet(ncnn::Net &net, const unsigned char *param_buf,
   }
 }
 
-void Model::InitNet(ncnn::Net &net, const unsigned char *param_buf,
-                      const unsigned char *bin_buf) {
-  
-  if (net.load_param(param_buf) == 0 ) {
-    NCNN_LOGE("failed to load param_buf");
-    exit(-1);
-  }
-  if (net.load_model(bin_buf) == 0 ) {
-    NCNN_LOGE("failed to load bin_buf");
-    exit(-1);
-  }
-}
 
 #if __ANDROID_API__ >= 9
 void Model::InitNet(AAssetManager *mgr, ncnn::Net &net,

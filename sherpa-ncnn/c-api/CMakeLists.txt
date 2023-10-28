@@ -1,5 +1,5 @@
 include_directories(${CMAKE_SOURCE_DIR})
-add_library(sherpa-ncnn-c-api c-api.cc)
+add_library(sherpa-ncnn-c-api c-api.cc asr_api_impl.cc)
 target_link_libraries(sherpa-ncnn-c-api sherpa-ncnn-core)
 
 if(BUILD_SHARED_LIBS)
