@@ -15,18 +15,137 @@ typedef struct file_header {
   char file_id[2];
   uint32_t file_size;
 } file_header;
+//end 1 byte alignment
+#pragma pack()
 
-/// load dp file and load the merged file, then compare them
-bool load_and_verify(const string& dp_file_name, const string& merged_file_name) {
-    ifstream dp_file(dp_file_name.c_str(), ios::binary);
-    if (!dp_file) {
-        cout << "Failed to open file: " << dp_file_name << endl;
-        return false;
+static void process_buffer_with_magic_number(uint8_t* buffer, uint32_t buffer_size, uint32_t magic_number) {
+    for (int i = 0; i < buffer_size; ++i) {
+        buffer[i] ^= (magic_number >> ((i % 4) * 8)) & 0xFF;
     }
+}
+
+#define SURE_NEW(p) {if (p == nullptr) {std::cout << "Memory allocation failed" << std::endl; return false;}}
+
+#define SURE_READ(is, cnt) do { \
+    if (is) \
+      std::cout << "all characters read successfully."<<std::endl; \
+    else    \
+      std::cout << "read "<< (cnt) <<" but error: only " << is.gcount() << " could be read"<<std::endl; \
+} while(0)
+
+/*
+Load six buffers from the merged file, memory allocate in this function
+@param merged_file_name: merged file name
+@param encoder_param_buffer: encoder param buffer
+@param encoder_bin_buffer: encoder bin buffer
+@param decoder_param_buffer: decoder param buffer
+@param decoder_bin_buffer: decoder bin buffer
+@param joint_param_buffer: joint param buffer
+@param joint_bin_buffer: joint bin buffer
+if load successfully, return true, otherwise return false
+*/
+bool load_from_merged_file(
+    const std::string& merged_file_name, 
+    uint8_t** encoder_param_buffer, 
+    uint8_t** encoder_bin_buffer,
+    uint8_t** decoder_param_buffer,
+    uint8_t** decoder_bin_buffer,
+    uint8_t** joint_param_buffer,
+    uint8_t** joint_bin_buffer) {
     
+    ///set all point to nullptr
+    *encoder_param_buffer = nullptr;
+    *encoder_bin_buffer = nullptr;
+    *decoder_param_buffer = nullptr;
+    *decoder_bin_buffer = nullptr;
+    *joint_param_buffer = nullptr;
+    *joint_bin_buffer = nullptr;
+
     ifstream merged_file(merged_file_name.c_str(), ios::binary);
     if (!merged_file) {
         cout << "Failed to open file: " << merged_file_name << endl;
+        return false;
+    }
+    uint32_t magic_number = 0;
+    merged_file.read((char*)&magic_number, sizeof(magic_number));
+    SURE_READ(merged_file, sizeof(magic_number));
+    
+    //read EP file header and data
+    file_header fh;
+    merged_file.read((char*)&fh, sizeof(fh));
+    SURE_READ(merged_file, sizeof(fh));
+    assert(memcmp(fh.file_id, "EP", 2) == 0);
+    *encoder_param_buffer = new uint8_t[fh.file_size];
+    SURE_NEW(*encoder_param_buffer);
+    merged_file.read((char*)*encoder_param_buffer, fh.file_size);
+    SURE_READ(merged_file, fh.file_size);
+    ///magic number xor
+    process_buffer_with_magic_number(*encoder_param_buffer, fh.file_size, magic_number);
+
+    //read EB file header and data
+    merged_file.read((char*)&fh, sizeof(fh));
+    SURE_READ(merged_file, sizeof(fh));
+    assert(memcmp(fh.file_id, "EB", 2) == 0);
+    *encoder_bin_buffer = new uint8_t[fh.file_size];
+    SURE_NEW(*encoder_bin_buffer);
+    merged_file.read((char*)*encoder_bin_buffer, fh.file_size);
+    SURE_READ(merged_file, fh.file_size);
+    ///magic number xor
+    process_buffer_with_magic_number(*encoder_bin_buffer, fh.file_size, magic_number);
+
+    //read DP file header and data
+    merged_file.read((char*)&fh, sizeof(fh));
+    SURE_READ(merged_file, sizeof(fh));
+    assert(memcmp(fh.file_id, "DP", 2) == 0);
+    *decoder_param_buffer = new uint8_t[fh.file_size];
+    SURE_NEW(*decoder_param_buffer);
+    merged_file.read((char*)*decoder_param_buffer, fh.file_size);
+    SURE_READ(merged_file, fh.file_size);
+    ///magic number xor
+    process_buffer_with_magic_number(*decoder_param_buffer, fh.file_size, magic_number);
+
+    //read DB file header and data
+    merged_file.read((char*)&fh, sizeof(fh));
+    SURE_READ(merged_file, sizeof(fh));
+    assert(memcmp(fh.file_id, "DB", 2) == 0);
+    *decoder_bin_buffer = new uint8_t[fh.file_size];
+    SURE_NEW(*decoder_bin_buffer);
+    merged_file.read((char*)*decoder_bin_buffer, fh.file_size);
+    SURE_READ(merged_file, fh.file_size);
+    ///magic number xor
+    process_buffer_with_magic_number(*decoder_bin_buffer, fh.file_size, magic_number);
+
+    //read JP file header and data
+    merged_file.read((char*)&fh, sizeof(fh));
+    SURE_READ(merged_file, sizeof(fh));
+    assert(memcmp(fh.file_id, "JP", 2) == 0);
+    *joint_param_buffer = new uint8_t[fh.file_size];
+    SURE_NEW(*joint_param_buffer);
+    merged_file.read((char*)*joint_param_buffer, fh.file_size);
+    SURE_READ(merged_file, fh.file_size);
+    ///magic number xor
+    process_buffer_with_magic_number(*joint_param_buffer, fh.file_size, magic_number);
+
+    //read JB file header and data
+    merged_file.read((char*)&fh, sizeof(fh));
+    SURE_READ(merged_file, sizeof(fh));
+    assert(memcmp(fh.file_id, "JB", 2) == 0);
+    *joint_bin_buffer = new uint8_t[fh.file_size];
+    SURE_NEW(*joint_bin_buffer);
+    merged_file.read((char*)*joint_bin_buffer, fh.file_size);
+    SURE_READ(merged_file, fh.file_size);
+    merged_file.close();
+    ///magic number xor
+    process_buffer_with_magic_number(*joint_bin_buffer, fh.file_size, magic_number);
+
+    return true;
+}
+
+/// load dp file and load the merged file, then compare them
+bool load_and_verify(const string& dp_file_name, const uint8_t* loaded_buffer) {
+    ifstream dp_file(dp_file_name.c_str(), ios::binary);
+    if (!dp_file) {
+        cout << "Failed to open file: " << dp_file_name << endl;
         return false;
     }
     
@@ -37,53 +156,18 @@ bool load_and_verify(const string& dp_file_name, const string& merged_file_name)
     
     char* dp_buf = new char[dp_file_size];
 
-    ///read magic number
-    uint32_t magic_number = 0;
-    merged_file.read((char*)&magic_number, sizeof(magic_number));
-    //read DP file header and data
-    file_header fh;
-    merged_file.read((char*)&fh, sizeof(fh));
-    while (memcmp(fh.file_id, "DP", 2) != 0) {
-        merged_file.seekg(fh.file_size, ios::cur);
-        merged_file.read((char*)&fh, sizeof(fh));
-    }
-    ///if eof is reached, return false
-    if (merged_file.eof()) {
-        cout << "Failed to find DP file in merged file" << endl;
-        ///close all files
-        dp_file.close();
-        merged_file.close();
-        return false;
-    }
-    ///compare size first
-    if (fh.file_size != dp_file_size) {
-        cout << "File size not match" << endl;
-        ///close all files
-        dp_file.close();
-        merged_file.close();
-        return false;
-    }
-
-    char* merged_buf = new char[fh.file_size];
 
     dp_file.read(dp_buf, dp_file_size);
-    merged_file.read(merged_buf, fh.file_size);
     
-    //xor buf with magic number
-    for (int j = 0; j < dp_file_size; ++j) {
-        merged_buf[j] ^= (magic_number >> ((j % 4) * 8)) & 0xFF;
-    }
     
-    if (memcmp(dp_buf, merged_buf, dp_file_size) != 0) {
+    if (memcmp(dp_buf, loaded_buffer, dp_file_size) != 0) {
         cout << "File content not match" << endl;
         return false;
     }
     
     dp_file.close();
-    merged_file.close();
 
     delete[] dp_buf;
-    delete[] merged_buf;
     return true;
 }
 
@@ -144,11 +228,60 @@ int main(int argc, char* argv[]) {
     
     fout.close();
 
-    ///checkout the merged file
-    if (load_and_verify(file_name[2], output_file)) {
-        cout << "Merge file successfully" << endl;
+
+    /// load all 
+    uint8_t* encoder_param_buffer = nullptr;
+    uint8_t* encoder_bin_buffer = nullptr;
+    uint8_t* decoder_param_buffer = nullptr;
+    uint8_t* decoder_bin_buffer = nullptr;
+    uint8_t* joint_param_buffer = nullptr;
+    uint8_t* joint_bin_buffer = nullptr;
+    if (load_from_merged_file(output_file, &encoder_param_buffer, &encoder_bin_buffer,
+        &decoder_param_buffer, &decoder_bin_buffer, &joint_param_buffer, &joint_bin_buffer)) {
+        cout << "Load merged file successfully" << endl;
     } else {
-        cout << "Merge file failed" << endl;
+        cout << "Load merged file failed" << endl;
     }
+
+    //verify six files and buffer
+    if (load_and_verify(file_name[0], encoder_param_buffer)) {
+        cout << "Verify encoder param file successfully" << endl;
+    } else {
+        cout << "Verify encoder param file failed" << endl;
+    }
+    if (load_and_verify(file_name[1], encoder_bin_buffer)) {
+        cout << "Verify encoder bin file successfully" << endl;
+    } else {
+        cout << "Verify encoder bin file failed" << endl;
+    }
+    if (load_and_verify(file_name[2], decoder_param_buffer)) {
+        cout << "Verify decoder param file successfully" << endl;
+    } else {
+        cout << "Verify decoder param file failed" << endl;
+    }
+    if (load_and_verify(file_name[3], decoder_bin_buffer)) {
+        cout << "Verify decoder bin file successfully" << endl;
+    } else {
+        cout << "Verify decoder bin file failed" << endl;
+    }
+    if (load_and_verify(file_name[4], joint_param_buffer)) {
+        cout << "Verify joint param file successfully" << endl;
+    } else {
+        cout << "Verify joint param file failed" << endl;
+    }
+    if (load_and_verify(file_name[5], joint_bin_buffer)) {
+        cout << "Verify joint bin file successfully" << endl;
+    } else {
+        cout << "Verify joint bin file failed" << endl;
+    }
+    
+    ///free all buffers
+    delete[] encoder_param_buffer;
+    delete[] encoder_bin_buffer;
+    delete[] decoder_param_buffer;
+    delete[] decoder_bin_buffer;
+    delete[] joint_param_buffer;
+    delete[] joint_bin_buffer;
+
     return 0;
 }
