@@ -4,6 +4,10 @@
 #include <stdint.h>
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // See https://github.com/pytorch/pytorch/blob/main/c10/macros/Export.h
 // We will set SHERPA_NCNN_BUILD_SHARED_LIBS and SHERPA_NCNN_BUILD_MAIN_LIB in
 // CMakeLists.txt
@@ -28,11 +32,6 @@
 #define ASR_API_API ASR_API_IMPORT
 #endif
 
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 enum ASR_Version { FAST=0x01, ACCURATE=0x02 };
 
 ///struct 
@@ -41,6 +40,8 @@ typedef struct ASR_Parameters
     int32_t size;
     int version; //ASR_Version
     int recognize_mode;
+    const char* larger_model_name;
+    const char* faster_model_name;
     char reserved[256];
 } ASR_Parameters;
 
@@ -49,7 +50,7 @@ typedef struct ASR_Result
     int32_t size;
     int32_t result_size;
     int32_t result_capacity;
-    char* result;
+    char* text;
     int32_t reserved[256];
 } ASR_Result;
 
@@ -104,7 +105,10 @@ ASR_API_EXPORT int ResetStreamASR(void* streamASR);
 
 
 #ifdef __cplusplus
+}
+#endif 
 
+#ifdef __cplusplus
 class ASRClass {
 public:
     ASRClass() {
@@ -128,13 +132,14 @@ public:
     }
 
     int StreamRecognize_(
-        const int16_t* audioData, 
-        int audioDataLen, 
+        const int16_t* audioData,
+        const int audioDataLen,
         int isFinalStream,
+        float sampleRate,
         ASR_Result* result, 
         int* isEndPoint
         ) {
-        return ::StreamRecognize(streamASRObject, audioData, audioDataLen, isFinalStream, result, isEndPoint);
+        return ::StreamRecognize(streamASRObject, audioData, audioDataLen, sampleRate, isFinalStream, result, isEndPoint);
     }
 
     int ResetStreamASR_() {
@@ -145,8 +150,6 @@ protected:
     void* asrObject;
     void* streamASRObject;
 };
-
-} //extern "C"
 #endif
 
 #endif // ASR_API_H

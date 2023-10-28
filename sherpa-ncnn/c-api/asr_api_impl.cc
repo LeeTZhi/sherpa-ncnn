@@ -1,40 +1,75 @@
-#include "c_api.h"
-#include "asr_api.h"
 
+#include "asr_api.h"
+#include "c-api-internal.h"
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
 
-#include "sherpa-ncnn/csrc/display.h"
-#include "sherpa-ncnn/csrc/model.h"
-#include "sherpa-ncnn/csrc/recognizer.h"
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <cstring>
+#include <cassert>
+#include <stdlib.h>
+#include <vector>
 
+#include "tokens_file_larger.h"
 ///model weights header files
 
-#include "model/encoder_mem_larger.h"
+//typedef struct SherpaNcnnRecognizer SherpaNcnnRecognizer;
+//typedef struct SherpaNcnnStream SherpaNcnnStream;
+//typedef struct SherpaNcnnRecognizerConfig SherpaNcnnRecognizerConfig;
 
-#include "model/decoder_mem_larger.h"
+//#define C_EXTERN extern "C"
+#define C_EXTERN
 
-#include "model/jointer_mem_larger.h"
-#include "model/tokens_file_larger.h"
-
-#define C_EXTERN extern "C"
+using namespace asr_api;
 
 class ASRRecognizer_Impl {
     public:
         ASRRecognizer_Impl() {
             recognizer_ = nullptr;
             stream_ = nullptr;
+            encoder_param_buffer_ = nullptr;
+            encoder_bin_buffer_ = nullptr;
+            decoder_param_buffer_ = nullptr;
+            decoder_bin_buffer_ = nullptr;
+            joiner_param_buffer_ = nullptr;
+            joiner_bin_buffer_ = nullptr;
         }
         ~ASRRecognizer_Impl() {
             if (recognizer_ != nullptr) {
-                delete recognizer_;
+                DestroyRecognizer(recognizer_);
                 recognizer_ = nullptr;
             }
             if (stream_ != nullptr) {
-                delete stream_;
+                DestroyStream(stream_);
                 stream_ = nullptr;
+            }
+            if (encoder_param_buffer_ != nullptr) {
+                free(encoder_param_buffer_);
+                encoder_param_buffer_ = nullptr;
+            }
+            if (encoder_bin_buffer_ != nullptr) {
+                free(encoder_bin_buffer_);
+                encoder_bin_buffer_ = nullptr;
+            }
+            if (decoder_param_buffer_ != nullptr) {
+                free(decoder_param_buffer_);
+                decoder_param_buffer_ = nullptr;
+            }
+            if (decoder_bin_buffer_ != nullptr) {
+                free(decoder_bin_buffer_);
+                decoder_bin_buffer_ = nullptr;
+            }
+            if (joiner_param_buffer_ != nullptr) {
+                free(joiner_param_buffer_);
+                joiner_param_buffer_ = nullptr;
+            }
+            if (joiner_bin_buffer_ != nullptr) {
+                free(joiner_bin_buffer_);
+                joiner_bin_buffer_ = nullptr;
             }
         }
 
@@ -57,26 +92,52 @@ class ASRRecognizer_Impl {
             ASR_Result* result, 
             int* isEndPoint
             );
-    protectd:
+        int Reset() {
+            if ( recognizer_ != nullptr && stream_ != nullptr) {
+                ::Reset(recognizer_, stream_);
+                return 0;
+            }
+            else {
+                return -1;
+            }
+        }
+    protected:
         SherpaNcnnRecognizer* recognizer_;
         SherpaNcnnStream* stream_;
 
         SherpaNcnnRecognizerConfig config_;
+
+        ///six model weights
+        uint8_t* encoder_param_buffer_;
+        uint8_t* encoder_bin_buffer_;
+        uint8_t* decoder_param_buffer_;
+        uint8_t* decoder_bin_buffer_;
+        uint8_t* joiner_param_buffer_;
+        uint8_t* joiner_bin_buffer_;
 };
+
+static bool load_from_merged_file(
+    const std::string& merged_file_name, 
+    uint8_t** encoder_param_buffer, 
+    uint8_t** encoder_bin_buffer,
+    uint8_t** decoder_param_buffer,
+    uint8_t** decoder_bin_buffer,
+    uint8_t** joiner_param_buffer,
+    uint8_t** joiner_bin_buffer);
 
 static void set_default_sherpa_ncnn_config(SherpaNcnnRecognizerConfig& config) {
     //Feature config
-    config.feat_config.sample_rate = 16000.0f; //16kHz
+    config.feat_config.sampling_rate = 16000.0f; //16kHz
     config.feat_config.feature_dim = 80;
 
     ///model config
     memset(&config.model_config, 0, sizeof(config.model_config));
-    config.model_config.use_buffer = true;
+    config.model_config.buffer_flag = 1;
     config.model_config.num_threads = 4;
 
     //decoder config
-    config.decoder.decoder_config.num_active_paths = 1;
-    config.decoder.decoder_config.decoding_method = nullptr;
+    config.decoder_config.num_active_paths = 1;
+    config.decoder_config.decoding_method = nullptr;
 
     /* 
      for these parameters 
@@ -85,9 +146,9 @@ static void set_default_sherpa_ncnn_config(SherpaNcnnRecognizerConfig& config) {
     */
 
     config.enable_endpoint = 1;
-    config.endpoint_config.rule1_min_trailing_silence = 0.5f;
-    config.endpoint_config.rule2_min_trailing_silence = 0.5f;
-    config.endpoint_config.rule3_min_utterance_length = 0.5f;
+    config.rule1_min_trailing_silence = 0.5f;
+    config.rule2_min_trailing_silence = 0.5f;
+    config.rule3_min_utterance_length = 0.5f;
     config.hotwords_file = nullptr;
     config.hotwords_score = 1.5f;
 }
@@ -95,14 +156,37 @@ static void set_default_sherpa_ncnn_config(SherpaNcnnRecognizerConfig& config) {
 int ASRRecognizer_Impl::Init(const ASR_Parameters& asr_config ) {
     // model_config, config_ and recognizer_ are defined in recognizer.h
     set_default_sherpa_ncnn_config(config_);
+    std::string model_name = asr_config.larger_model_name;
+    ///load the model weights
+    if (asr_config.version == FAST ) {
+        model_name = asr_config.faster_model_name;
+    }
+    /// if model name is empty, return error
+    if (model_name.empty()) {
+        return -1;
+    }
+    ///load the model weights
+    bool bLoad = load_from_merged_file(
+            model_name, 
+            &encoder_param_buffer_, 
+            &encoder_bin_buffer_,
+            &decoder_param_buffer_,
+            &decoder_bin_buffer_,
+            &joiner_param_buffer_,
+            &joiner_bin_buffer_
+            );
+    if (!bLoad) {
+        return -1;
+    }
 
-    config_.model_config.encoder_param_buffer = encoder_jit_trace_pnnx_ncnn_param_bin;
-    config_.model_config.encoder_bin_buffer = encoder_jit_trace_pnnx_ncnn_bin;
-    config_.model_config.decoder_param_buffer = decoder_jit_trace_pnnx_ncnn_param_bin;
-    config_.model_config.decoder_bin_buffer = decoder_jit_trace_pnnx_ncnn_bin;
-    config_.model_config.jointer_param_buffer = jointer_jit_trace_pnnx_ncnn_param_bin;
-    config_.model_config.jointer_bin_buffer = jointer_jit_trace_pnnx_ncnn_bin;
-    config_.model_config.tokens_buffer = tokens_data;
+    config_.model_config.encoder_param_buffer = encoder_param_buffer_;
+    config_.model_config.encoder_bin_buffer = encoder_bin_buffer_;
+    config_.model_config.decoder_param_buffer = decoder_param_buffer_;
+    config_.model_config.decoder_bin_buffer = decoder_bin_buffer_;
+    config_.model_config.joiner_param_buffer = joiner_param_buffer_;
+    config_.model_config.joiner_bin_buffer = joiner_bin_buffer_;
+
+    config_.model_config.tokens_buffer = reinterpret_cast<const unsigned char*>(tokens_data);
     config_.model_config.tokens_buffer_size = sizeof(tokens_data);
     
     recognizer_ = CreateRecognizer(&config_);
@@ -135,26 +219,26 @@ int ASRRecognizer_Impl::StreamRecognize(
         audio_data_float[i] = audioData[i]/32768.0f;
     }
     /// accept wave data
-    int ret = AcceptWaveform(stream_, samplerate, &audio_data_float[0], audioDataLen);
+    AcceptWaveform(stream_, sampleRate, &audio_data_float[0], audioDataLen);
 
     ///if ready decode 
-    ret = IsReady( recognizer_, stream_);
+    int ret = IsReady( recognizer_, stream_);
     if ( ret ) {
         ///decode
-        ret = Decode(recognizer_, stream_);
+        Decode(recognizer_, stream_);
 
         auto results = GetResult(recognizer_, stream_);
 
         ///asign the result to outputs
-        result->text = results.text;
+        //result->text = results->text;
         //destroy the results
-        DestroyResults(results);
+        DestroyResult(results);
 
         /// check endpoint
-        *isEndPoint = IsEndPoint(recognizer_, stream_);
+        *isEndPoint = ::IsEndpoint(recognizer_, stream_);
         if (*isEndPoint) {
             ///reset
-            Reset(recognizer_, stream_);
+            this->Reset();
         }
     }
 
@@ -188,9 +272,7 @@ C_EXTERN int ResetStreamASRObject(void* asr_object) {
         return -1;
     }
     ASRRecognizer_Impl* asr_recognizer = (ASRRecognizer_Impl*)asr_object;
-    Reset(asr_recognizer->recoginzer_, asr_recognizer->stream_);
-
-    return 0;
+    return asr_recognizer->Reset();
 }
 
 C_EXTERN int StreamRecognize(
@@ -208,4 +290,137 @@ C_EXTERN int StreamRecognize(
 
     ASRRecognizer_Impl* asr_recognizer = (ASRRecognizer_Impl*)streamASR;
     return asr_recognizer->StreamRecognize(audioData, audioDataLen, isFinalStream, sampleRate, result, isEndPoint);
+}
+
+
+//1 byte alignment
+#pragma pack(1)
+typedef struct file_header {
+  char file_id[2];
+  uint32_t file_size;
+} file_header;
+//end 1 byte alignment
+#pragma pack()
+
+static void process_buffer_with_magic_number(uint8_t* buffer, uint32_t buffer_size, uint32_t magic_number) {
+    for (int i = 0; i < buffer_size; ++i) {
+        buffer[i] ^= (magic_number >> ((i % 4) * 8)) & 0xFF;
+    }
+}
+
+#define SURE_NEW(p) {if (p == nullptr) {std::cout << "Memory allocation failed" << std::endl; return false;}}
+
+#define SURE_READ(is, cnt) do { \
+    if (is) \
+      std::cout << "all characters read successfully."<<std::endl; \
+    else    \
+      std::cout << "read "<< (cnt) <<" but error: only " << is.gcount() << " could be read"<<std::endl; \
+} while(0)
+
+/*
+Load six buffers from the merged file, memory allocate in this function
+@param merged_file_name: merged file name
+@param encoder_param_buffer: encoder param buffer
+@param encoder_bin_buffer: encoder bin buffer
+@param decoder_param_buffer: decoder param buffer
+@param decoder_bin_buffer: decoder bin buffer
+@param joint_param_buffer: joint param buffer
+@param joint_bin_buffer: joint bin buffer
+if load successfully, return true, otherwise return false
+*/
+bool load_from_merged_file(
+    const std::string& merged_file_name, 
+    uint8_t** encoder_param_buffer, 
+    uint8_t** encoder_bin_buffer,
+    uint8_t** decoder_param_buffer,
+    uint8_t** decoder_bin_buffer,
+    uint8_t** joiner_param_buffer,
+    uint8_t** joiner_bin_buffer) {
+    
+    ///set all point to nullptr
+    *encoder_param_buffer = nullptr;
+    *encoder_bin_buffer = nullptr;
+    *decoder_param_buffer = nullptr;
+    *decoder_bin_buffer = nullptr;
+    *joiner_param_buffer = nullptr;
+    *joiner_bin_buffer = nullptr;
+
+    std::ifstream merged_file(merged_file_name.c_str(), std::ios::binary);
+    if (!merged_file) {
+        std::cout << "Failed to open file: " << merged_file_name << std::endl;
+        return false;
+    }
+    uint32_t magic_number = 0;
+    merged_file.read((char*)&magic_number, sizeof(magic_number));
+    SURE_READ(merged_file, sizeof(magic_number));
+    
+    //read EP file header and data
+    file_header fh;
+    merged_file.read((char*)&fh, sizeof(fh));
+    SURE_READ(merged_file, sizeof(fh));
+    assert(memcmp(fh.file_id, "EP", 2) == 0);
+    *encoder_param_buffer = static_cast<uint8_t*>(aligned_alloc(4, fh.file_size));
+    SURE_NEW(*encoder_param_buffer);
+    merged_file.read((char*)*encoder_param_buffer, fh.file_size);
+    SURE_READ(merged_file, fh.file_size);
+    ///magic number xor
+    process_buffer_with_magic_number(*encoder_param_buffer, fh.file_size, magic_number);
+
+    //read EB file header and data
+    merged_file.read((char*)&fh, sizeof(fh));
+    SURE_READ(merged_file, sizeof(fh));
+    assert(memcmp(fh.file_id, "EB", 2) == 0);
+    *encoder_bin_buffer = static_cast<uint8_t*>(aligned_alloc(4, fh.file_size));
+    SURE_NEW(*encoder_bin_buffer);
+    merged_file.read((char*)*encoder_bin_buffer, fh.file_size);
+    SURE_READ(merged_file, fh.file_size);
+    ///magic number xor
+    process_buffer_with_magic_number(*encoder_bin_buffer, fh.file_size, magic_number);
+
+    //read DP file header and data
+    merged_file.read((char*)&fh, sizeof(fh));
+    SURE_READ(merged_file, sizeof(fh));
+    assert(memcmp(fh.file_id, "DP", 2) == 0);
+    *decoder_param_buffer = static_cast<uint8_t*>(aligned_alloc(4, fh.file_size));
+    SURE_NEW(*decoder_param_buffer);
+    merged_file.read((char*)*decoder_param_buffer, fh.file_size);
+    SURE_READ(merged_file, fh.file_size);
+    ///magic number xor
+    process_buffer_with_magic_number(*decoder_param_buffer, fh.file_size, magic_number);
+
+    //read DB file header and data
+    merged_file.read((char*)&fh, sizeof(fh));
+    SURE_READ(merged_file, sizeof(fh));
+    assert(memcmp(fh.file_id, "DB", 2) == 0);
+    *decoder_bin_buffer = static_cast<uint8_t*>(aligned_alloc(4, fh.file_size));
+    SURE_NEW(*decoder_bin_buffer);
+    merged_file.read((char*)*decoder_bin_buffer, fh.file_size);
+    SURE_READ(merged_file, fh.file_size);
+    ///magic number xor
+    process_buffer_with_magic_number(*decoder_bin_buffer, fh.file_size, magic_number);
+
+    //read JP file header and data
+    merged_file.read((char*)&fh, sizeof(fh));
+    SURE_READ(merged_file, sizeof(fh));
+    assert(memcmp(fh.file_id, "JP", 2) == 0);
+    *joiner_param_buffer = static_cast<uint8_t*>(aligned_alloc(4, fh.file_size));
+    SURE_NEW(*joiner_param_buffer);
+    merged_file.read((char*)*joiner_param_buffer, fh.file_size);
+    SURE_READ(merged_file, fh.file_size);
+    ///magic number xor
+    process_buffer_with_magic_number(*joiner_param_buffer, fh.file_size, magic_number);
+
+    //read JB file header and data
+    merged_file.read((char*)&fh, sizeof(fh));
+    SURE_READ(merged_file, sizeof(fh));
+    assert(memcmp(fh.file_id, "JB", 2) == 0);
+    *joiner_bin_buffer = static_cast<uint8_t*>(aligned_alloc(4, fh.file_size));
+    SURE_NEW(*joiner_bin_buffer);
+    merged_file.read((char*)*joiner_bin_buffer, fh.file_size);
+    SURE_READ(merged_file, fh.file_size);
+    merged_file.close();
+    ///magic number xor
+    process_buffer_with_magic_number(*joiner_bin_buffer, fh.file_size, magic_number);
+
+    return true;
 }

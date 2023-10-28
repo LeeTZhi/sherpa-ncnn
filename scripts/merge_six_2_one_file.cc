@@ -7,6 +7,9 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <cstring>
+#include <cassert>
+
 using namespace std;
 
 //1 byte alignment
