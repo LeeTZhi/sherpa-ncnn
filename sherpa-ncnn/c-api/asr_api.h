@@ -39,7 +39,6 @@ typedef struct ASR_Parameters
 {
     int32_t size;
     int version; //ASR_Version
-    int recognize_mode;
     const char* larger_model_name;
     const char* faster_model_name;
     char reserved[256];

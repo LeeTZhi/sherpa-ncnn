@@ -139,7 +139,8 @@ void Model::InitNet(ncnn::Net &net, const std::string &param,
 void Model::InitNet(ncnn::Net &net, const unsigned char *param_buf,
                       const unsigned char *bin_buf) {
   
-  if (net.load_param(param_buf) == 0 ) {
+  const char* param_buf_char = reinterpret_cast<const char*>(param_buf);
+  if (net.load_param_mem(param_buf_char) != 0 ) {
     NCNN_LOGE("failed to load param_buf");
     exit(-1);
   }
@@ -185,8 +186,9 @@ std::unique_ptr<Model> Model::Create(const ModelConfig &config) {
   RegisterCustomLayers(net);
 
   if ( config.use_buffer ) {
-    auto ret = net.load_param(config.encoder_param_buf);
-    if (ret == 0) {
+    const char* param_buf = reinterpret_cast<const char*>(config.encoder_param_buf);
+    auto ret = net.load_param_mem(param_buf);
+    if (ret != 0) {
       NCNN_LOGE("Failed to load %s", config.encoder_param.c_str());
       return nullptr;
     }

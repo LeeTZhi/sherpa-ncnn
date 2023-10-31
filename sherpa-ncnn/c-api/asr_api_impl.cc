@@ -21,8 +21,6 @@
 //typedef struct SherpaNcnnStream SherpaNcnnStream;
 //typedef struct SherpaNcnnRecognizerConfig SherpaNcnnRecognizerConfig;
 
-//#define C_EXTERN extern "C"
-#define C_EXTERN
 
 using namespace asr_api;
 
@@ -156,10 +154,13 @@ static void set_default_sherpa_ncnn_config(SherpaNcnnRecognizerConfig& config) {
 int ASRRecognizer_Impl::Init(const ASR_Parameters& asr_config ) {
     // model_config, config_ and recognizer_ are defined in recognizer.h
     set_default_sherpa_ncnn_config(config_);
-    std::string model_name = asr_config.larger_model_name;
+    std::string model_name;
     ///load the model weights
     if (asr_config.version == FAST ) {
         model_name = asr_config.faster_model_name;
+    }
+    else {
+        model_name = asr_config.larger_model_name;
     }
     /// if model name is empty, return error
     if (model_name.empty()) {
@@ -250,7 +251,13 @@ int ASRRecognizer_Impl::StreamRecognize(
     return 0;
 }
 
-C_EXTERN void* CreateStreamASRObject(const ASR_Parameters* asr_config) {
+extern "C" {
+
+ASR_API_EXPORT void* CreateStreamASRObject(
+    const ASR_Parameters* asr_config, 
+    const char* authToken,
+    const int authTokenLen
+    ) {
     ASRRecognizer_Impl* asr_recognizer = new ASRRecognizer_Impl();
     if (asr_recognizer->Init(*asr_config) != 0) {
         delete asr_recognizer;
@@ -259,7 +266,7 @@ C_EXTERN void* CreateStreamASRObject(const ASR_Parameters* asr_config) {
     return (void*)asr_recognizer;
 }
 
-C_EXTERN void DestroyStreamASRObject(void* asr_object) {
+ASR_API_EXPORT  void DestroyStreamASR(void* asr_object) {
     if (asr_object == nullptr) {
         return;
     }
@@ -267,7 +274,7 @@ C_EXTERN void DestroyStreamASRObject(void* asr_object) {
     delete asr_recognizer;
 }
 
-C_EXTERN int ResetStreamASRObject(void* asr_object) {
+ASR_API_EXPORT  int ResetStreamASR(void* asr_object) {
     if (asr_object == nullptr) {
         return -1;
     }
@@ -275,7 +282,7 @@ C_EXTERN int ResetStreamASRObject(void* asr_object) {
     return asr_recognizer->Reset();
 }
 
-C_EXTERN int StreamRecognize(
+ASR_API_EXPORT  int StreamRecognize(
     void* streamASR, 
     const int16_t* audioData, 
     int audioDataLen, 
@@ -292,6 +299,12 @@ C_EXTERN int StreamRecognize(
     return asr_recognizer->StreamRecognize(audioData, audioDataLen, isFinalStream, sampleRate, result, isEndPoint);
 }
 
+ASR_API_EXPORT int DestroyASRResult(ASR_Result* result){
+    ///TODO
+    return 0;
+}
+
+} //extern "C"
 
 //1 byte alignment
 #pragma pack(1)

@@ -39,7 +39,10 @@ ZipformerModel::ZipformerModel(const ModelConfig &config) {
 
   if (config.use_buffer) {
     ///initial the model directly from buffer
+    RegisterCustomLayers(encoder_);
     InitNet(encoder_, config.encoder_param_buf, config.encoder_bin_buf);
+    InitEncoderPostProcessing();
+
     InitNet(decoder_, config.decoder_param_buf, config.decoder_bin_buf);
     InitNet(joiner_, config.joiner_param_buf, config.joiner_bin_buf);
   } else {

@@ -42,21 +42,22 @@ struct SherpaNcnnDisplay {
 };
 
 #define SHERPA_NCNN_OR(x, y) (x ? x : y)
+#define NULL_PTR_2_STR(t) (t != nullptr) ? t : ""
 
 SherpaNcnnRecognizer *CreateRecognizer(
     const SherpaNcnnRecognizerConfig *in_config) {
   // model_config
   sherpa_ncnn::RecognizerConfig config;
-  config.model_config.encoder_param = in_config->model_config.encoder_param;
-  config.model_config.encoder_bin = in_config->model_config.encoder_bin;
+  config.model_config.encoder_param = NULL_PTR_2_STR(in_config->model_config.encoder_param);
+  config.model_config.encoder_bin = NULL_PTR_2_STR(in_config->model_config.encoder_bin);
 
-  config.model_config.decoder_param = in_config->model_config.decoder_param;
-  config.model_config.decoder_bin = in_config->model_config.decoder_bin;
+  config.model_config.decoder_param = NULL_PTR_2_STR(in_config->model_config.decoder_param);
+  config.model_config.decoder_bin = NULL_PTR_2_STR(in_config->model_config.decoder_bin);
 
-  config.model_config.joiner_param = in_config->model_config.joiner_param;
-  config.model_config.joiner_bin = in_config->model_config.joiner_bin;
+  config.model_config.joiner_param = NULL_PTR_2_STR(in_config->model_config.joiner_param);
+  config.model_config.joiner_bin = NULL_PTR_2_STR(in_config->model_config.joiner_bin);
 
-  config.model_config.tokens = in_config->model_config.tokens;
+  config.model_config.tokens = NULL_PTR_2_STR(in_config->model_config.tokens);
   config.model_config.use_vulkan_compute =
       in_config->model_config.use_vulkan_compute;
 
@@ -67,10 +68,16 @@ SherpaNcnnRecognizer *CreateRecognizer(
   config.model_config.joiner_opt.num_threads = num_threads;
 
   // decoder_config
-  config.decoder_config.method = in_config->decoder_config.decoding_method;
-  config.decoder_config.num_active_paths =
+  if ( in_config->decoder_config.decoding_method == nullptr ){
+    config.decoder_config.method = "greedy_search";
+    config.decoder_config.num_active_paths = 1;
+  }
+  else {
+    config.decoder_config.method = in_config->decoder_config.decoding_method;
+    config.decoder_config.num_active_paths =
       in_config->decoder_config.num_active_paths;
-
+  }
+  
   config.hotwords_file = SHERPA_NCNN_OR(in_config->hotwords_file, "");
   config.hotwords_score = SHERPA_NCNN_OR(in_config->hotwords_score, 1.5);
 
