@@ -63,6 +63,10 @@ SherpaNcnnRecognizer *CreateRecognizer(
 
   int32_t num_threads = SHERPA_NCNN_OR(in_config->model_config.num_threads, 1);
 
+  ////tokens config
+  config.model_config.tokens_buf = in_config->model_config.tokens_buffer;
+  config.model_config.tokens_buf_size = in_config->model_config.tokens_buffer_size;
+
   config.model_config.encoder_opt.num_threads = num_threads;
   config.model_config.decoder_opt.num_threads = num_threads;
   config.model_config.joiner_opt.num_threads = num_threads;

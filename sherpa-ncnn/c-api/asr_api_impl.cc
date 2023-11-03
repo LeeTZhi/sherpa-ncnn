@@ -143,10 +143,12 @@ static void set_default_sherpa_ncnn_config(SherpaNcnnRecognizerConfig& config) {
      2. hotwords
     */
 
-    config.enable_endpoint = 1;
-    config.rule1_min_trailing_silence = 0.5f;
-    config.rule2_min_trailing_silence = 0.5f;
-    config.rule3_min_utterance_length = 0.5f;
+    config.decoder_config.num_active_paths = 4;
+    config.enable_endpoint = 0;
+    config.rule1_min_trailing_silence = 2.4;
+    config.rule2_min_trailing_silence = 1.2;
+    config.rule3_min_utterance_length = 300;
+
     config.hotwords_file = nullptr;
     config.hotwords_score = 1.5f;
 }
@@ -223,13 +225,16 @@ int ASRRecognizer_Impl::StreamRecognize(
     AcceptWaveform(stream_, sampleRate, &audio_data_float[0], audioDataLen);
 
     ///if ready decode 
-    int ret = IsReady( recognizer_, stream_);
-    if ( ret ) {
+    //int ret = IsReady( recognizer_, stream_);
+    while ( IsReady( recognizer_, stream_) ) {
         ///decode
         Decode(recognizer_, stream_);
 
         auto results = GetResult(recognizer_, stream_);
-
+        if (results->text) {
+            ///copy the result to outputs
+            result->text = strdup(results->text);
+        }
         ///asign the result to outputs
         //result->text = results->text;
         //destroy the results
@@ -301,6 +306,11 @@ ASR_API_EXPORT  int StreamRecognize(
 
 ASR_API_EXPORT int DestroyASRResult(ASR_Result* result){
     ///TODO
+    if ( result == nullptr) {
+        return 0;
+    }
+    free(result->text);
+    result->text = nullptr;
     return 0;
 }
 
