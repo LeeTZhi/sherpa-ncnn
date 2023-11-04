@@ -103,10 +103,6 @@ class Recognizer::Impl {
     } else if (config.decoder_config.method == "modified_beam_search") {
       decoder_ = std::make_unique<ModifiedBeamSearchDecoder>(
           model_.get(), config.decoder_config.num_active_paths);
-
-      if (!config_.hotwords_file.empty()) {
-        InitHotwords();
-      }
     } else {
       NCNN_LOGE("Unsupported method: %s", config.decoder_config.method.c_str());
       exit(-1);
@@ -117,6 +113,9 @@ class Recognizer::Impl {
     else {
       sym_ = SymbolTable(config.model_config.tokens);
     }
+    if (!config_.hotwords_file.empty()) {
+        InitHotwords();
+      }
   }
 
 #if __ANDROID_API__ >= 9
@@ -285,6 +284,7 @@ class Recognizer::Impl {
           int32_t number = sym_[word];
           tmp.push_back(number);
         } else {
+          ///print all sym_ in the model
           NCNN_LOGE(
               "Cannot find ID for hotword %s at line: %s. (Hint: words on the "
               "same line are separated by spaces)",
