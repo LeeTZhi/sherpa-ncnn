@@ -39,8 +39,35 @@ typedef struct ASR_Parameters
 {
     int32_t size;
     int version; //ASR_Version
+
+    // 更大的模型名称
     const char* larger_model_name;
+
+    // 更快的模型名称
     const char* faster_model_name;
+
+    /// 用于VAD，请参阅docs/endpoint_readme.md
+    /// 0为禁用，1为启用
+    int32_t enable_endpoint;
+
+    /// 如果即使没有解码任何内容，尾部静默时间（以秒为单位）大于此值，则检测到端点。
+    /// 仅在enable_endpoint不为0时使用。
+    float rule1_min_threshold;
+
+    /// 如果在解码了不是空白的内容之后，尾部静默时间（以秒为单位）大于此值，则检测到端点。
+    /// 仅在enable_endpoint不为0时使用。
+    float rule2_min_threshold;
+
+    /// 如果话语时间（以秒为单位）大于此值，则检测到端点。
+    /// 仅在enable_endpoint不为0时使用。
+    float rule3_min_threshold;
+
+    /// 热词文件路径，每行是一个热词，如果语言是CJK之类的东西，则通过空格分隔，如果语言是英语之类的东西，则通过bpe模型分隔。
+    const char *hotwords_path;
+
+    /// 热词的比例，仅在hotwords_file不为空时使用
+    float hotwords_factor;
+
     char reserved[256];
 } ASR_Parameters;
 
