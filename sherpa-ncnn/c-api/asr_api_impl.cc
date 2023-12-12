@@ -21,6 +21,7 @@
 //typedef struct SherpaNcnnStream SherpaNcnnStream;
 //typedef struct SherpaNcnnRecognizerConfig SherpaNcnnRecognizerConfig;
 
+#define NULL_PTR_2_STR(t) (t != nullptr) ? t : ""
 
 using namespace asr_api;
 
@@ -144,7 +145,7 @@ static void set_default_sherpa_ncnn_config(SherpaNcnnRecognizerConfig& config) {
     */
 
     config.decoder_config.num_active_paths = 4;
-    config.enable_endpoint = 0;
+    config.enable_endpoint = 1;
     config.rule1_min_trailing_silence = 2.4;
     config.rule2_min_trailing_silence = 1.2;
     config.rule3_min_utterance_length = 300;
@@ -159,10 +160,10 @@ int ASRRecognizer_Impl::Init(const ASR_Parameters& asr_config ) {
     std::string model_name;
     ///load the model weights
     if (asr_config.version == FAST ) {
-        model_name = asr_config.faster_model_name;
+        model_name = NULL_PTR_2_STR(asr_config.faster_model_name);
     }
     else {
-        model_name = asr_config.larger_model_name;
+        model_name = NULL_PTR_2_STR(asr_config.larger_model_name);
     }
     /// if model name is empty, return error
     if (model_name.empty()) {
@@ -191,6 +192,15 @@ int ASRRecognizer_Impl::Init(const ASR_Parameters& asr_config ) {
 
     config_.model_config.tokens_buffer = reinterpret_cast<const unsigned char*>(tokens_data);
     config_.model_config.tokens_buffer_size = sizeof(tokens_data);
+    
+    ///endpoint parameters
+    config_.enable_endpoint = asr_config.enable_endpoint;
+    config_.rule1_min_trailing_silence = asr_config.rule1_min_threshold;
+    config_.rule2_min_trailing_silence = asr_config.rule2_min_threshold;
+    config_.rule3_min_utterance_length = asr_config.rule3_min_threshold;
+    ///hotwords
+    config_.hotwords_file = asr_config.hotwords_path;
+    config_.hotwords_score = asr_config.hotwords_factor;
     
     recognizer_ = CreateRecognizer(&config_);
 

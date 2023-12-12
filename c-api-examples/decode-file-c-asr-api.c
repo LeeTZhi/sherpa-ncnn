@@ -38,7 +38,11 @@ int32_t main(int32_t argc, char *argv[]) {
 
   config.version = FAST;
   config.faster_model_name = argv[1];
-
+  config.enable_endpoint = 1;
+  config.rule1_min_threshold = 2.5f;
+  config.rule2_min_threshold = 1.2f;
+  config.rule3_min_threshold = 120.0f;
+  
   
   void *recognizer = CreateStreamASRObject(&config, NULL, 0);
   if ( recognizer == NULL ) {
@@ -91,7 +95,7 @@ int32_t main(int32_t argc, char *argv[]) {
   fclose(fp);
 
   // add some tail padding
-  float tail_paddings[4800] = {0};  // 0.3 seconds at 16 kHz sample rate
+  int16_t tail_paddings[4800] = {0};  // 0.3 seconds at 16 kHz sample rate
   StreamRecognize(recognizer, tail_paddings, 4800, sampleRate, 1, &results, &isEnd);
   
 
