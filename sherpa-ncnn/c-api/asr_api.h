@@ -81,6 +81,11 @@ typedef struct ASR_Result
 } ASR_Result;
 
 ///API
+/* get version and build time
+    * @return: version and build time
+*/
+
+ASR_API_EXPORT const char* GetSDKVersion();
 
 ASR_API_EXPORT void* CreateStreamASRObject(
     const ASR_Parameters* parameters,

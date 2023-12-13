@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 #include "net.h"       // NOLINT
 #include "platform.h"  // NOLINT

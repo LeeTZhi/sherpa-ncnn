@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include "sherpa-ncnn/c-api/c-api.h"
 
@@ -107,6 +108,11 @@ int32_t main(int32_t argc, char *argv[]) {
 
   SherpaNcnnDisplay *display = CreateDisplay(50);
   int32_t segment_id = -1;
+  ///define the total elapsed time
+  struct timeval start, end;
+  long milseconds, useconds;    
+  double total_elapsed_time = 0;
+  int frame_count = 0;
 
   while (!feof(fp)) {
     size_t n = fread((void *)buffer, sizeof(int16_t), N, fp);
@@ -114,6 +120,7 @@ int32_t main(int32_t argc, char *argv[]) {
       for (size_t i = 0; i != n; ++i) {
         samples[i] = buffer[i] / 32768.;
       }
+      gettimeofday(&start, NULL);
       AcceptWaveform(s, 16000, samples, n);
       while (IsReady(recognizer, s)) {
         Decode(recognizer, s);
@@ -124,10 +131,17 @@ int32_t main(int32_t argc, char *argv[]) {
         SherpaNcnnPrint(display, segment_id, r->text);
       }
       DestroyResult(r);
+      gettimeofday(&end, NULL);
+      milseconds  = (end.tv_sec  - start.tv_sec)*1000;
+      useconds   = (end.tv_usec - start.tv_usec)/1000;
+      total_elapsed_time += (milseconds + useconds/1000.0);
+      frame_count++;
     }
   }
   fclose(fp);
 
+  ///t0 for the end
+  gettimeofday(&start, NULL);
   // add some tail padding
   float tail_paddings[4800] = {0};  // 0.3 seconds at 16 kHz sample rate
   AcceptWaveform(s, 16000, tail_paddings, 4800);
@@ -141,8 +155,13 @@ int32_t main(int32_t argc, char *argv[]) {
   if (strlen(r->text)) {
     SherpaNcnnPrint(display, segment_id, r->text);
   }
-
+  frame_count++;
   DestroyResult(r);
+  ///time evaulation
+  gettimeofday(&end, NULL);
+  milseconds  = (end.tv_sec  - start.tv_sec)*1000;
+  useconds   = (end.tv_usec - start.tv_usec)/1000;
+  total_elapsed_time += (milseconds + useconds/1000.0);
 
   DestroyDisplay(display);
 
@@ -150,6 +169,6 @@ int32_t main(int32_t argc, char *argv[]) {
   DestroyRecognizer(recognizer);
 
   fprintf(stderr, "\n");
-
+  fprintf(stderr, "Total wav length %d ms, Total elapsed time: %f ms\n", frame_count*200, total_elapsed_time);
   return 0;
 }

@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include "sherpa-ncnn/c-api/asr_api.h"
 
@@ -75,11 +76,22 @@ int32_t main(int32_t argc, char *argv[]) {
   ASR_Result results;
   memset(&results, 0, sizeof(results));
   int count = 0;
+  ///define the total elapsed time
+  struct timeval start, end;
+  long milseconds, useconds;    
+  double total_elapsed_time = 0;
+
   while (!feof(fp)) {
     size_t n = fread((void *)buffer, sizeof(int16_t), N, fp);
     if (n > 0) {
+      ///t0
+      gettimeofday(&start, NULL);
       int ret = StreamRecognize(recognizer, buffer, n, sampleRate, isFinal, &results, &isEnd);
-      
+      gettimeofday(&end, NULL);
+      milseconds  = (end.tv_sec  - start.tv_sec)*1000;
+      useconds   = (end.tv_usec - start.tv_usec)/1000;
+      total_elapsed_time += (milseconds + useconds/1000.0);
+
       if (ret != 0 ) {
         fprintf(stderr, "Failed to recognize\n");
         return -1;
@@ -103,6 +115,6 @@ int32_t main(int32_t argc, char *argv[]) {
   ResetStreamASR(recognizer);
 
   fprintf(stderr, "\n");
-
+  fprintf(stderr, "Total elapsed time: %f ms\n", total_elapsed_time);
   return 0;
 }

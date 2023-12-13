@@ -64,6 +64,13 @@ SherpaNcnnRecognizer *CreateRecognizer(
   config.model_config.decoder_opt.num_threads = num_threads;
   config.model_config.joiner_opt.num_threads = num_threads;
 
+  #if __aarch64__
+  //set use a53 = True
+  config.model_config.encoder_opt.use_a53_a55_optimized_kernel = true;
+  config.model_config.decoder_opt.use_a53_a55_optimized_kernel = true;
+  config.model_config.joiner_opt.use_a53_a55_optimized_kernel = true;
+  #endif 
+
   // decoder_config
   config.decoder_config.method = in_config->decoder_config.decoding_method;
   config.decoder_config.num_active_paths =
