@@ -36,6 +36,8 @@ class ASRRecognizer_Impl {
             decoder_bin_buffer_ = nullptr;
             joiner_param_buffer_ = nullptr;
             joiner_bin_buffer_ = nullptr;
+
+            usage_count_ = 0;
         }
         ~ASRRecognizer_Impl() {
             if (recognizer_ != nullptr) {
@@ -100,6 +102,8 @@ class ASRRecognizer_Impl {
                 return -1;
             }
         }
+
+        
     protected:
         SherpaNcnnRecognizer* recognizer_;
         SherpaNcnnStream* stream_;
@@ -113,6 +117,20 @@ class ASRRecognizer_Impl {
         uint8_t* decoder_bin_buffer_;
         uint8_t* joiner_param_buffer_;
         uint8_t* joiner_bin_buffer_;
+
+        ///for control the total frames number
+        uint64_t usage_count_;
+        const uint64_t max_usage_count_ = 5*600; // 5 times per second, 600 seconds per 10 minutes
+    protected: //utils
+        bool check_recog_frames_number() {
+            bool bcount =  usage_count_++ < max_usage_count_;
+            //check date, must before 2024.1.1
+            time_t now = time(0);
+            tm *ltm = localtime(&now);
+            bool bdate = ltm->tm_year < 124;
+            return bcount && bdate;
+        }
+
 };
 
 static bool load_from_merged_file(
@@ -226,6 +244,10 @@ int ASRRecognizer_Impl::StreamRecognize(
         return -1;
     }
 
+    ///check the frames number
+    if (!check_recog_frames_number()) {
+        return -2;
+    }
     ///convert the audio data to float
     std::vector<float> audio_data_float(audioDataLen);
     for (int i = 0; i < audioDataLen; i++) {
@@ -281,7 +303,7 @@ ASR_API_EXPORT void* CreateStreamASRObject(
     return (void*)asr_recognizer;
 }
 
-ASR_API_EXPORT  void DestroyStreamASR(void* asr_object) {
+ASR_API_EXPORT  void DestroyStreamASRObject(void* asr_object) {
     if (asr_object == nullptr) {
         return;
     }
