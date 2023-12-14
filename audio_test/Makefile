@@ -1,10 +1,11 @@
-﻿CXX = aarch64-linux-gnu-g++
+﻿CXX = aarch64-linux-gnu-g++-6
 CXXFLAGS += -O2 -Wall -fPIC
 CXXFLAGS += -I ./
 
-LIBS  = -lpthread -lm -lstdc++ -ldl
-LIBS += -L./ -ltinyalsa
+
+LIBS = -L./ -ltinyalsa
 LIBS += -L./ -lbsp_audio
+LIBS  += -lpthread -lm -lstdc++ -ldl
 
 CXXFLAGS += $(LIBS)
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#export PATH=/home/ltz/Disk_B/part_1/Software/gcc-arm-none-eabi/sherpa-ncnn-toolchains/gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf/bin:$PATH
 
 if ! command -v arm-linux-gnueabihf-gcc  &> /dev/null; then
   echo "Please install a toolchain for cross-compiling."
@@ -20,7 +21,7 @@ if [ ! -f alsa-lib/src/.libs/libasound.so ]; then
     git clone --depth 1 https://github.com/alsa-project/alsa-lib
   fi
   pushd alsa-lib
-  CC=arm-linux-gnueabihf-gcc ./gitcompile --host=arm-linux-gnueabihf
+  CC=aarch64-linux-gnu-gcc ./gitcompile --host=aarch64-linux-gnu
   popd
   echo "Finish cross-compiling alsa-lib"
 fi
@@ -38,7 +39,7 @@ cmake \
   -DSHERPA_NCNN_ENABLE_JNI=OFF \
   -DSHERPA_NCNN_ENABLE_BINARY=ON \
   -DSHERPA_NCNN_ENABLE_TEST=OFF \
-  -DCMAKE_TOOLCHAIN_FILE=../toolchains/arm-linux-gnueabihf.toolchain.cmake \
+  -DCMAKE_TOOLCHAIN_FILE=../toolchains/aarch64-linux-gnu.toolchain.cmake \
   ..
 
 make VERBOSE=1 -j4

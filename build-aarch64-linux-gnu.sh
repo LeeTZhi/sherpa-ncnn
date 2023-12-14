@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if ! command -v aarch64-linux-gnu-gcc  &> /dev/null; then
+if ! command -v aarch64-linux-gnu-gcc-6  &> /dev/null; then
   echo "Please install a toolchain for cross-compiling."
   echo "You can refer to: "
   echo "  https://k2-fsa.github.io/sherpa/ncnn/install/aarch64-embedded-linux.html"
@@ -25,7 +25,7 @@ if [ ! -f alsa-lib/src/.libs/libasound.so ]; then
   #  sudo apt-get install libtool m4 automake
   #
   pushd alsa-lib
-  CC=aarch64-linux-gnu-gcc ./gitcompile --host=aarch64-linux-gnu
+  CC=aarch64-linux-gnu-gcc-6 ./gitcompile --host=aarch64-linux-gnu
   popd
   echo "Finish cross-compiling alsa-lib"
 fi
