@@ -341,7 +341,7 @@ static void process_buffer_with_magic_number(uint8_t* buffer, uint32_t buffer_si
     }
 }
 
-#define SURE_NEW(p) {if (p == nullptr) {std::cout << "Memory allocation failed" << std::endl; return false;}}
+#define SURE_NEW(p) {if (p == nullptr) {std::cout << "Memory allocation failed at: " << __LINE__ <<std::endl; return false;}}
 
 #define SURE_READ(is, cnt) do { \
     if (is) \
@@ -349,6 +349,18 @@ static void process_buffer_with_magic_number(uint8_t* buffer, uint32_t buffer_si
     else    \
       std::cout << "read "<< (cnt) <<" but error: only " << is.gcount() << " could be read"<<std::endl; \
 } while(0)
+#define ALIGN_SIZE(size, alignment) (((size) + (alignment) - 1) / (alignment) * (alignment))
+
+static uint8_t* _aligned_alloc(size_t alignment, size_t size) {
+    void* ptr = nullptr;
+    size = ALIGN_SIZE(size, alignment);
+    int ret = posix_memalign(&ptr, alignment, size);
+    if (ret != 0) {
+        std::cout << "Failed to allocate memory with alignment: " << alignment << ", size: " << size << std::endl;
+        return nullptr;
+    }
+    return static_cast<uint8_t*>(ptr);
+}
 
 /*
 Load six buffers from the merged file, memory allocate in this function
@@ -378,6 +390,8 @@ bool load_from_merged_file(
     *joiner_param_buffer = nullptr;
     *joiner_bin_buffer = nullptr;
 
+    size_t aligned_size = 8;
+
     std::ifstream merged_file(merged_file_name.c_str(), std::ios::binary);
     if (!merged_file) {
         std::cout << "Failed to open file: " << merged_file_name << std::endl;
@@ -392,8 +406,11 @@ bool load_from_merged_file(
     merged_file.read((char*)&fh, sizeof(fh));
     SURE_READ(merged_file, sizeof(fh));
     assert(memcmp(fh.file_id, "EP", 2) == 0);
-    *encoder_param_buffer = static_cast<uint8_t*>(aligned_alloc(4, fh.file_size));
+    *encoder_param_buffer = _aligned_alloc(aligned_size, fh.file_size);
     SURE_NEW(*encoder_param_buffer);
+
+    //*encoder_param_buffer = static_cast<uint8_t*>(aligned_alloc(4, fh.file_size));
+    //SURE_NEW(*encoder_param_buffer);
     merged_file.read((char*)*encoder_param_buffer, fh.file_size);
     SURE_READ(merged_file, fh.file_size);
     ///magic number xor
@@ -403,7 +420,8 @@ bool load_from_merged_file(
     merged_file.read((char*)&fh, sizeof(fh));
     SURE_READ(merged_file, sizeof(fh));
     assert(memcmp(fh.file_id, "EB", 2) == 0);
-    *encoder_bin_buffer = static_cast<uint8_t*>(aligned_alloc(4, fh.file_size));
+    
+    *encoder_bin_buffer = _aligned_alloc(aligned_size, fh.file_size);
     SURE_NEW(*encoder_bin_buffer);
     merged_file.read((char*)*encoder_bin_buffer, fh.file_size);
     SURE_READ(merged_file, fh.file_size);
@@ -414,7 +432,7 @@ bool load_from_merged_file(
     merged_file.read((char*)&fh, sizeof(fh));
     SURE_READ(merged_file, sizeof(fh));
     assert(memcmp(fh.file_id, "DP", 2) == 0);
-    *decoder_param_buffer = static_cast<uint8_t*>(aligned_alloc(4, fh.file_size));
+    *decoder_param_buffer = _aligned_alloc(aligned_size, fh.file_size);;
     SURE_NEW(*decoder_param_buffer);
     merged_file.read((char*)*decoder_param_buffer, fh.file_size);
     SURE_READ(merged_file, fh.file_size);
@@ -425,7 +443,7 @@ bool load_from_merged_file(
     merged_file.read((char*)&fh, sizeof(fh));
     SURE_READ(merged_file, sizeof(fh));
     assert(memcmp(fh.file_id, "DB", 2) == 0);
-    *decoder_bin_buffer = static_cast<uint8_t*>(aligned_alloc(4, fh.file_size));
+    *decoder_bin_buffer = _aligned_alloc(aligned_size, fh.file_size);
     SURE_NEW(*decoder_bin_buffer);
     merged_file.read((char*)*decoder_bin_buffer, fh.file_size);
     SURE_READ(merged_file, fh.file_size);
@@ -436,7 +454,7 @@ bool load_from_merged_file(
     merged_file.read((char*)&fh, sizeof(fh));
     SURE_READ(merged_file, sizeof(fh));
     assert(memcmp(fh.file_id, "JP", 2) == 0);
-    *joiner_param_buffer = static_cast<uint8_t*>(aligned_alloc(4, fh.file_size));
+    *joiner_param_buffer = _aligned_alloc(aligned_size, fh.file_size);
     SURE_NEW(*joiner_param_buffer);
     merged_file.read((char*)*joiner_param_buffer, fh.file_size);
     SURE_READ(merged_file, fh.file_size);
@@ -447,7 +465,7 @@ bool load_from_merged_file(
     merged_file.read((char*)&fh, sizeof(fh));
     SURE_READ(merged_file, sizeof(fh));
     assert(memcmp(fh.file_id, "JB", 2) == 0);
-    *joiner_bin_buffer = static_cast<uint8_t*>(aligned_alloc(4, fh.file_size));
+    *joiner_bin_buffer = _aligned_alloc(aligned_size, fh.file_size);
     SURE_NEW(*joiner_bin_buffer);
     merged_file.read((char*)*joiner_bin_buffer, fh.file_size);
     SURE_READ(merged_file, fh.file_size);
