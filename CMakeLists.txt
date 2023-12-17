@@ -170,6 +170,9 @@ if(NOT BUILD_SHARED_LIBS)
   endif()
 endif()
 
+#add subdirectory(mbedtls)
+add_subdirectory(external/mbedtls)
+
 # See https://people.freedesktop.org/~dbn/pkg-config-guide.html
 configure_file(cmake/sherpa-ncnn.pc.in ${PROJECT_BINARY_DIR}/sherpa-ncnn.pc @ONLY)
 install(
