@@ -54,7 +54,9 @@ bool load_from_merged_file(
     uint8_t** decoder_param_buffer,
     uint8_t** decoder_bin_buffer,
     uint8_t** joint_param_buffer,
-    uint8_t** joint_bin_buffer) {
+    uint8_t** joint_bin_buffer,
+    uint8_t** token_buffer
+    ) {
     
     ///set all point to nullptr
     *encoder_param_buffer = nullptr;
@@ -63,6 +65,7 @@ bool load_from_merged_file(
     *decoder_bin_buffer = nullptr;
     *joint_param_buffer = nullptr;
     *joint_bin_buffer = nullptr;
+    *token_buffer = nullptr;
 
     ifstream merged_file(merged_file_name.c_str(), ios::binary);
     if (!merged_file) {
@@ -137,10 +140,21 @@ bool load_from_merged_file(
     SURE_NEW(*joint_bin_buffer);
     merged_file.read((char*)*joint_bin_buffer, fh.file_size);
     SURE_READ(merged_file, fh.file_size);
-    merged_file.close();
+    
     ///magic number xor
     process_buffer_with_magic_number(*joint_bin_buffer, fh.file_size, magic_number);
 
+    //read TK file header and data
+    merged_file.read((char*)&fh, sizeof(fh));
+    SURE_READ(merged_file, sizeof(fh));
+    assert(memcmp(fh.file_id, "TK", 2) == 0);
+    *token_buffer = new uint8_t[fh.file_size];
+    SURE_NEW(*token_buffer);
+    merged_file.read((char*)*token_buffer, fh.file_size);
+    SURE_READ(merged_file, fh.file_size);
+    process_buffer_with_magic_number(*token_buffer, fh.file_size, magic_number);
+
+    merged_file.close();
     return true;
 }
 
@@ -175,21 +189,21 @@ bool load_and_verify(const string& dp_file_name, const uint8_t* loaded_buffer) {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 8) {
+    if (argc != 9) {
         cout << "Usage: " << argv[0] << " EN_file_param EN_file_bin "
-             << "DE_file_param DE_file_bin output_file" <<
-             "JO_file_param JO_file_bin"
+             << "DE_file_param DE_file_bin " <<
+             "JO_file_param JO_file_bin" <<" tokens.txt" << " output_file"
              << endl;
         return -1;
     }
     
-    string file_name[6];
-    for (int i = 0; i < 6; ++i) {
+    string file_name[7];
+    for (int i = 0; i < 7; ++i) {
         file_name[i] = argv[i + 1];
     }
-    const char* file_type[6] = {"EP", "EB",  "DP", "DB", "JP", "JB"};
+    const char* file_type[7] = {"EP", "EB",  "DP", "DB", "JP", "JB", "TK"};
 
-    string output_file = argv[7];
+    string output_file = argv[8];
     
     ofstream fout(output_file.c_str(), ios::binary);
     if (!fout) {
@@ -203,7 +217,7 @@ int main(int argc, char* argv[]) {
     
     // Write file header
     file_header fh;
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < 7; ++i) {
         ifstream fin(file_name[i].c_str(), ios::binary);
         if (!fin) {
         cout << "Failed to open file: " << file_name[i] << endl;
@@ -239,8 +253,10 @@ int main(int argc, char* argv[]) {
     uint8_t* decoder_bin_buffer = nullptr;
     uint8_t* joint_param_buffer = nullptr;
     uint8_t* joint_bin_buffer = nullptr;
+    uint8_t* token_buffer = nullptr;
+
     if (load_from_merged_file(output_file, &encoder_param_buffer, &encoder_bin_buffer,
-        &decoder_param_buffer, &decoder_bin_buffer, &joint_param_buffer, &joint_bin_buffer)) {
+        &decoder_param_buffer, &decoder_bin_buffer, &joint_param_buffer, &joint_bin_buffer, &token_buffer)) {
         cout << "Load merged file successfully" << endl;
     } else {
         cout << "Load merged file failed" << endl;
@@ -277,6 +293,12 @@ int main(int argc, char* argv[]) {
     } else {
         cout << "Verify joint bin file failed" << endl;
     }
+
+    if (load_and_verify(file_name[6], token_buffer)) {
+        cout << "Verify token file successfully" << endl;
+    } else {
+        cout << "Verify token file failed" << endl;
+    }
     
     ///free all buffers
     delete[] encoder_param_buffer;
@@ -285,6 +307,6 @@ int main(int argc, char* argv[]) {
     delete[] decoder_bin_buffer;
     delete[] joint_param_buffer;
     delete[] joint_bin_buffer;
-
+    delete[] token_buffer;
     return 0;
 }

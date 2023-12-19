@@ -115,6 +115,6 @@ int32_t main(int32_t argc, char *argv[]) {
   ResetStreamASR(recognizer);
 
   fprintf(stderr, "\n");
-  fprintf(stderr, "Total elapsed time: %f ms\n", total_elapsed_time);
+  fprintf(stderr, "Total elapsed time: %f ms average: %f ms\n", total_elapsed_time, total_elapsed_time/count);
   return 0;
 }

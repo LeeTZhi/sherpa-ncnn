@@ -36,6 +36,7 @@ class ASRRecognizer_Impl {
             decoder_bin_buffer_ = nullptr;
             joiner_param_buffer_ = nullptr;
             joiner_bin_buffer_ = nullptr;
+            tokens_buffer_ = nullptr;
 
             usage_count_ = 0;
         }
@@ -71,6 +72,10 @@ class ASRRecognizer_Impl {
             if (joiner_bin_buffer_ != nullptr) {
                 free(joiner_bin_buffer_);
                 joiner_bin_buffer_ = nullptr;
+            }
+            if (tokens_buffer_ != nullptr) {
+                free(tokens_buffer_);
+                tokens_buffer_ = nullptr;
             }
         }
 
@@ -117,6 +122,7 @@ class ASRRecognizer_Impl {
         uint8_t* decoder_bin_buffer_;
         uint8_t* joiner_param_buffer_;
         uint8_t* joiner_bin_buffer_;
+        uint8_t* tokens_buffer_;
 
         ///for control the total frames number
         uint64_t usage_count_;
@@ -140,7 +146,10 @@ static bool load_from_merged_file(
     uint8_t** decoder_param_buffer,
     uint8_t** decoder_bin_buffer,
     uint8_t** joiner_param_buffer,
-    uint8_t** joiner_bin_buffer);
+    uint8_t** joiner_bin_buffer,
+    uint8_t** tokens_buffer,
+    size_t& tokens_buffer_size
+    );
 
 static void set_default_sherpa_ncnn_config(SherpaNcnnRecognizerConfig& config) {
     //Feature config
@@ -150,7 +159,7 @@ static void set_default_sherpa_ncnn_config(SherpaNcnnRecognizerConfig& config) {
     ///model config
     memset(&config.model_config, 0, sizeof(config.model_config));
     config.model_config.buffer_flag = 1;
-    config.model_config.num_threads = 4;
+    config.model_config.num_threads = 3;
 
     //decoder config
     config.decoder_config.num_active_paths = 1;
@@ -176,6 +185,7 @@ int ASRRecognizer_Impl::Init(const ASR_Parameters& asr_config ) {
     // model_config, config_ and recognizer_ are defined in recognizer.h
     set_default_sherpa_ncnn_config(config_);
     std::string model_name;
+    size_t tokens_buffer_size = 0;
     ///load the model weights
     if (asr_config.version == FAST ) {
         model_name = NULL_PTR_2_STR(asr_config.faster_model_name);
@@ -195,7 +205,9 @@ int ASRRecognizer_Impl::Init(const ASR_Parameters& asr_config ) {
             &decoder_param_buffer_,
             &decoder_bin_buffer_,
             &joiner_param_buffer_,
-            &joiner_bin_buffer_
+            &joiner_bin_buffer_,
+            &tokens_buffer_,
+            tokens_buffer_size
             );
     if (!bLoad) {
         return -1;
@@ -208,8 +220,8 @@ int ASRRecognizer_Impl::Init(const ASR_Parameters& asr_config ) {
     config_.model_config.joiner_param_buffer = joiner_param_buffer_;
     config_.model_config.joiner_bin_buffer = joiner_bin_buffer_;
 
-    config_.model_config.tokens_buffer = reinterpret_cast<const unsigned char*>(tokens_data);
-    config_.model_config.tokens_buffer_size = sizeof(tokens_data);
+    config_.model_config.tokens_buffer = reinterpret_cast<const unsigned char*>(tokens_buffer_);
+    config_.model_config.tokens_buffer_size = tokens_buffer_size;
     
     ///endpoint parameters
     config_.enable_endpoint = asr_config.enable_endpoint;
@@ -369,7 +381,10 @@ static void process_buffer_with_magic_number(uint8_t* buffer, uint32_t buffer_si
     if (is) \
       std::cout << "all characters read successfully."<<std::endl; \
     else    \
-      std::cout << "read "<< (cnt) <<" but error: only " << is.gcount() << " could be read"<<std::endl; \
+      {     \
+        std::cout << "read "<< (cnt) <<" but error: only " << is.gcount() << " could be read"<<std::endl; \
+        return false; \
+        } \
 } while(0)
 #define ALIGN_SIZE(size, alignment) (((size) + (alignment) - 1) / (alignment) * (alignment))
 
@@ -402,7 +417,10 @@ bool load_from_merged_file(
     uint8_t** decoder_param_buffer,
     uint8_t** decoder_bin_buffer,
     uint8_t** joiner_param_buffer,
-    uint8_t** joiner_bin_buffer) {
+    uint8_t** joiner_bin_buffer,
+    uint8_t** tokens_buffer,
+    size_t& tokens_buffer_size
+    ) {
     
     ///set all point to nullptr
     *encoder_param_buffer = nullptr;
@@ -411,6 +429,7 @@ bool load_from_merged_file(
     *decoder_bin_buffer = nullptr;
     *joiner_param_buffer = nullptr;
     *joiner_bin_buffer = nullptr;
+    *tokens_buffer = nullptr;
 
     size_t aligned_size = 8;
 
@@ -491,9 +510,21 @@ bool load_from_merged_file(
     SURE_NEW(*joiner_bin_buffer);
     merged_file.read((char*)*joiner_bin_buffer, fh.file_size);
     SURE_READ(merged_file, fh.file_size);
-    merged_file.close();
     ///magic number xor
     process_buffer_with_magic_number(*joiner_bin_buffer, fh.file_size, magic_number);
 
+    //read tokens file header and data
+    merged_file.read((char*)&fh, sizeof(fh));
+    SURE_READ(merged_file, sizeof(fh));
+    assert(memcmp(fh.file_id, "TK", 2) == 0);
+    *tokens_buffer = _aligned_alloc(aligned_size, fh.file_size);
+    SURE_NEW(*tokens_buffer);
+    merged_file.read((char*)*tokens_buffer, fh.file_size);
+    SURE_READ(merged_file, fh.file_size);
+    ///magic number xor
+    process_buffer_with_magic_number(*tokens_buffer, fh.file_size, magic_number);
+    tokens_buffer_size = fh.file_size;
+
+    merged_file.close();
     return true;
 }
