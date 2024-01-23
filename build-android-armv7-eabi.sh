@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -ex
+export ANDROID_NDK=/home/ltz/nvme/Android/android-ndk-r26b
 
 dir=build-android-armv7-eabi
 
@@ -47,9 +48,9 @@ cmake -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" 
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_SHARED_LIBS=ON \
     -DSHERPA_NCNN_ENABLE_PORTAUDIO=OFF \
-    -DSHERPA_NCNN_ENABLE_BINARY=OFF \
+    -DSHERPA_NCNN_ENABLE_BINARY=ON \
     -DSHERPA_NCNN_ENABLE_TEST=OFF \
-    -DSHERPA_NCNN_ENABLE_C_API=OFF \
+    -DSHERPA_NCNN_ENABLE_C_API=ON \
     -DSHERPA_NCNN_ENABLE_GENERATE_INT8_SCALE_TABLE=OFF \
     -DCMAKE_INSTALL_PREFIX=./install \
     -DANDROID_ABI="armeabi-v7a" -DANDROID_ARM_NEON=ON \

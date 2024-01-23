@@ -77,7 +77,11 @@ typedef struct ASR_Result
     int32_t result_size;
     int32_t result_capacity;
     char* text;
-    int32_t reserved[256];
+    // 识别结果的时间戳，单位为毫秒
+    float* timestamps;
+    //识别结果数目
+    int32_t count;
+    char reserved[248];
 } ASR_Result;
 
 ///API

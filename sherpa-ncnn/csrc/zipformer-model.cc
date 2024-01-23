@@ -41,6 +41,7 @@ ZipformerModel::ZipformerModel(const ModelConfig &config) {
   if (config.use_buffer) {
     ///initial the model directly from buffer
     RegisterCustomLayers(encoder_);
+    //fprintf(stderr, "InitNet from buffer, opt.use_bf16_storage : %d\n", encoder_.opt.use_bf16_storage);
     InitNet(encoder_, config.encoder_param_buf, config.encoder_bin_buf);
     InitEncoderPostProcessing();
 

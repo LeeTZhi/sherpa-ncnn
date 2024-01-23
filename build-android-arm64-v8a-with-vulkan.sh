@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -ex
+export ANDROID_NDK=/home/ltz/nvme/Android/android-ndk-r26b
+export VULKAN_SDK=/home/ltz/nvme/Android/VulkanSDK_1.3.268.0
 
 # First, we assume you have installed vulkan by following
 # windows: https://vulkan.lunarg.com/doc/sdk/latest/windows/getting_started.html
@@ -112,9 +114,9 @@ cmake -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" 
     -DBUILD_SHARED_LIBS=ON \
     -DNCNN_SYSTEM_GLSLANG=ON \
     -DSHERPA_NCNN_ENABLE_PORTAUDIO=OFF \
-    -DSHERPA_NCNN_ENABLE_BINARY=OFF \
+    -DSHERPA_NCNN_ENABLE_BINARY=ON \
     -DSHERPA_NCNN_ENABLE_TEST=OFF \
-    -DSHERPA_NCNN_ENABLE_C_API=OFF \
+    -DSHERPA_NCNN_ENABLE_C_API=ONF \
     -DSHERPA_NCNN_ENABLE_GENERATE_INT8_SCALE_TABLE=OFF \
     -DCMAKE_INSTALL_PREFIX=./install \
     -DANDROID_ABI="arm64-v8a" \

@@ -2,6 +2,7 @@
 set -ex
 
 dir=build-android-arm64-v8a
+export ANDROID_NDK=/home/ltz/nvme/Android/android-ndk-r26b
 
 mkdir -p $dir
 cd $dir
@@ -48,9 +49,9 @@ cmake -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" 
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_SHARED_LIBS=ON \
     -DSHERPA_NCNN_ENABLE_PORTAUDIO=OFF \
-    -DSHERPA_NCNN_ENABLE_BINARY=OFF \
+    -DSHERPA_NCNN_ENABLE_BINARY=ON \
     -DSHERPA_NCNN_ENABLE_TEST=OFF \
-    -DSHERPA_NCNN_ENABLE_C_API=OFF \
+    -DSHERPA_NCNN_ENABLE_C_API=ON \
     -DSHERPA_NCNN_ENABLE_GENERATE_INT8_SCALE_TABLE=OFF \
     -DCMAKE_INSTALL_PREFIX=./install \
     -DANDROID_ABI="arm64-v8a" \

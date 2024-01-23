@@ -126,7 +126,7 @@ class ASRRecognizer_Impl {
 
         ///for control the total frames number
         uint64_t usage_count_;
-        const uint64_t max_usage_count_ = 5*600; // 5 times per second, 600 seconds per 10 minutes
+        const uint64_t max_usage_count_ = 100*600; // 5 times per second, 600 seconds per 10 minutes
     protected: //utils
         bool check_recog_frames_number() {
             bool bcount =  usage_count_++ < max_usage_count_;
@@ -278,6 +278,11 @@ int ASRRecognizer_Impl::StreamRecognize(
         if (results->text) {
             ///copy the result to outputs
             result->text = strdup(results->text);
+            if (results->timestamps) {
+                result->timestamps = (float*)malloc(sizeof(float)*results->count);
+                memcpy(result->timestamps, results->timestamps, sizeof(float)*results->count);
+            }
+            result->count = results->count;
         }
         ///asign the result to outputs
         //result->text = results->text;
@@ -355,6 +360,9 @@ ASR_API_EXPORT int DestroyASRResult(ASR_Result* result){
     }
     free(result->text);
     result->text = nullptr;
+    free(result->timestamps);
+    result->timestamps = nullptr;
+    result->count = 0;
     return 0;
 }
 
