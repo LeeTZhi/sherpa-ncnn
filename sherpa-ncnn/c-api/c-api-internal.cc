@@ -94,6 +94,12 @@ SherpaNcnnRecognizer *CreateRecognizer(
       in_config->decoder_config.num_active_paths;
   }
   
+  if (in_config->hotwords_file != nullptr) {
+    //beam search
+    config.decoder_config.method = "modified_beam_search";
+    config.decoder_config.num_active_paths = std::max(4, config.decoder_config.num_active_paths);
+  }
+
   config.hotwords_file = SHERPA_NCNN_OR(in_config->hotwords_file, "");
   config.hotwords_score = SHERPA_NCNN_OR(in_config->hotwords_score, 1.5);
 

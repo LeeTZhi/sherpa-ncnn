@@ -6,9 +6,9 @@ function(download_ncnn)
   # https://github.com/csukuangfj/ncnn/pull/7
 
   # Please also change ../pack-for-embedded-systems.sh
-  set(ncnn_URL  "https://github.com/csukuangfj/ncnn/archive/refs/tags/sherpa-1.1.tar.gz")
+  set(ncnn_URL  "https://github.com/Tencent/ncnn/archive/refs/tags/20231027.tar.gz")
   set(ncnn_URL2 "https://huggingface.co/csukuangfj/sherpa-ncnn-cmake-deps/resolve/main/ncnn-sherpa-1.1.tar.gz")
-  set(ncnn_HASH "SHA256=254aaedf8ad3e6baaa63bcd5d23e9673e3973d7cb2154c18e5c7743d45b4e160")
+  set(ncnn_HASH "SHA256=8d85896ed095d09f05fff32fc85d75eea0b971796ce0f48a9874d93d3d347674")
 
   # If you don't have access to the Internet, please download it to your
   # local drive and modify the following line according to your needs.

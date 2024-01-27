@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <math.h>
 
 #include "sherpa-ncnn/c-api/asr_api.h"
 
@@ -80,7 +81,8 @@ int32_t main(int32_t argc, char *argv[]) {
   struct timeval start, end;
   long milseconds, useconds;    
   double total_elapsed_time = 0;
-
+  double total_elapsed_time_var = 0;
+  
   while (!feof(fp)) {
     size_t n = fread((void *)buffer, sizeof(int16_t), N, fp);
     if (n > 0) {
@@ -90,7 +92,9 @@ int32_t main(int32_t argc, char *argv[]) {
       gettimeofday(&end, NULL);
       milseconds  = (end.tv_sec  - start.tv_sec)*1000;
       useconds   = (end.tv_usec - start.tv_usec)/1000;
-      total_elapsed_time += (milseconds + useconds/1000.0);
+      int64_t elapsed_time = milseconds + useconds/1000;
+      total_elapsed_time += elapsed_time;
+      total_elapsed_time_var += elapsed_time*elapsed_time;
 
       if (ret != 0 ) {
         fprintf(stderr, "Failed to recognize\n");
@@ -116,5 +120,10 @@ int32_t main(int32_t argc, char *argv[]) {
 
   fprintf(stderr, "\n");
   fprintf(stderr, "Total elapsed time: %f ms average: %f ms\n", total_elapsed_time, total_elapsed_time/count);
+  //calculate the standard deviation
+  double mean = total_elapsed_time/count;
+  double variance = total_elapsed_time_var/count - mean*mean;
+  double std_deviation = sqrt(variance);
+  fprintf(stderr, "mean elapsed time: %f ms standard deviation: %f ms\n", mean, std_deviation);
   return 0;
 }

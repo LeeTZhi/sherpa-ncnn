@@ -126,15 +126,20 @@ class ASRRecognizer_Impl {
 
         ///for control the total frames number
         uint64_t usage_count_;
-        const uint64_t max_usage_count_ = 100*600; // 5 times per second, 600 seconds per 10 minutes
+        const uint64_t max_usage_count_ = 20*600; // 5 times per second, 600 seconds per 10 minutes
     protected: //utils
         bool check_recog_frames_number() {
+
             bool bcount =  usage_count_++ < max_usage_count_;
+        #ifdef __aarch64__
             //check date, must before 2024.1.1
             time_t now = time(0);
             tm *ltm = localtime(&now);
             bool bdate = ltm->tm_year < 124;
             return bcount && bdate;
+        #else 
+            return bcount;
+        #endif
         }
 
 };

@@ -4,6 +4,7 @@
 */
 
 #include <iostream>
+#include <fstream>
 #include <thread>
 #include <mutex>
 #include <queue>
@@ -55,7 +56,32 @@ void audioCaptureThread(const std::string& filePath) {
     fclose(fp);
 }
 
-void audioRecognitionThread(void* recognizer) {
+// 函数定义
+int findSubstringIndex(const char* str, const char* target) {
+    const char* start = str;
+    const char* end;
+    int index = 0;
+
+    while (*start) {
+        end = start;
+        // 找到下一个 '\0' 字符
+        while (*end && *end != '\0') {
+            end++;
+        }
+
+        if (strstr(start, target) != NULL) {
+            return index;
+        }
+
+        // 移动到下一个子字符串的开头
+        start = end + 1;
+        index++;
+    }
+
+    return -1;
+}
+
+void audioRecognitionThread(void* recognizer, const std::vector<std::string>& keywords) {
     int32_t segment_id = -1;
 
     int32_t isFinal = 0;
@@ -81,7 +107,14 @@ void audioRecognitionThread(void* recognizer) {
             // do recognition
             int ret = StreamRecognize(recognizer, audioChunk.data(), audioChunk.size(), sampleRate, isFinal, &results, &isEnd);
             if ( isEnd && results.text != NULL) {
-                printf("End, result: %s\n", results.text);
+                //find the keywords
+                for ( int i = 0; i < keywords.size(); i++ ) {
+                    int index = findSubstringIndex(results.text, keywords[i].c_str());
+                    if ( index != -1 ) {
+                        printf("find keyword %s at %d timestamp: %f ms\n", keywords[i].c_str(), index, results.timestamps[index]);
+                    }
+                }
+                printf("Final result: %s\n", results.text);
             }
             DestroyASRResult(&results);
         }
@@ -100,33 +133,64 @@ void audioRecognitionThread(void* recognizer) {
 
 
 int main(int32_t argc, char *argv[]) {
-  if (argc < 3 ) {
-    fprintf(stderr, "usage: %s\n model.bin wav_path\n", argv[0]);
-    return -1;
-  }
+    if (argc < 3 ) {
+        fprintf(stderr, "usage: %s\n model.bin wav_path\n", argv[0]);
+        return -1;
+    }
 
-  ASR_Parameters config;
-  memset(&config, 0, sizeof(config));
 
-  config.version = FAST;
-  config.faster_model_name = argv[1];
-  config.enable_endpoint = 1;
-  config.rule1_min_threshold = 2.5f;
-  config.rule2_min_threshold = 1.2f;
-  config.rule3_min_threshold = 120.0f;
+    ASR_Parameters config;
+    memset(&config, 0, sizeof(config));
+
+    config.version = FAST;
+    config.faster_model_name = argv[1];
+    config.enable_endpoint = 1;
+    config.rule1_min_threshold = 2.5f;
+    config.rule2_min_threshold = 1.2f;
+    config.rule3_min_threshold = 120.0f;
+
+    char* keywords_file = NULL; //所有热词
+    char* hotwords_file = NULL; //需要特别关注发音的热词
+    if ( argc >= 4 ) {
+        keywords_file = argv[3];
+    }
+    if ( argc >= 5 ) {
+        hotwords_file = argv[4];
+    }
+    config.hotwords_path = hotwords_file;
+    config.hotwords_factor = 2.0f;
+    
+    //load keywords
+    std::vector<std::string> keywords;
+
+    if ( keywords_file != NULL ) {
+        std::ifstream fin(keywords_file, std::ios::in);
+        if ( !fin.is_open() ) {
+            fprintf(stderr, "Failed to open %s\n", keywords_file);
+            return -1;
+        }
+        std::string line;
+        while ( std::getline(fin, line) ) {
+            keywords.push_back(line);
+        }
+
+        //print keywords
+        for ( int i = 0; i < keywords.size(); i++ ) {
+            printf("keyword %d: %s\n", i, keywords[i].c_str());
+        }
+    }
   
-  
-  void *recognizer = CreateStreamASRObject(&config, NULL, 0);
-  if ( recognizer == NULL ) {
-    fprintf(stderr, "Failed to create recognizer\n");
-    return -1;
-  }
+    void *recognizer = CreateStreamASRObject(&config, NULL, 0);
+    if ( recognizer == NULL ) {
+        fprintf(stderr, "Failed to create recognizer\n");
+        return -1;
+    }
 
-  const char *wav_filename = argv[2];
+    const char *wav_filename = argv[2];
   
     ///two threads
     std::thread captureThread(audioCaptureThread, wav_filename);
-    std::thread recogThread(audioRecognitionThread, recognizer);
+    std::thread recogThread(audioRecognitionThread, recognizer, keywords);
 
     captureThread.join();
     recogThread.join();
