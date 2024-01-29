@@ -173,6 +173,9 @@ endif()
 #add subdirectory(mbedtls)
 add_subdirectory(external/mbedtls)
 
+#get cpu info
+add_subdirectory(cpu_info)
+
 # See https://people.freedesktop.org/~dbn/pkg-config-guide.html
 configure_file(cmake/sherpa-ncnn.pc.in ${PROJECT_BINARY_DIR}/sherpa-ncnn.pc @ONLY)
 install(
@@ -181,3 +184,4 @@ install(
   DESTINATION
     .
 )
+
