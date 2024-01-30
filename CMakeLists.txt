@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
 project(sherpa-ncnn)
 
 set(SHERPA_NCNN_VERSION "2.1.3")
+#SDK Version
+set(ASR_API_VERSION "0.1.0")
 
 # Disable warning about
 #

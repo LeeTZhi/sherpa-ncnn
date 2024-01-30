@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "tokens_file_larger.h"
+#include "version.h"
 ///model weights header files
 
 //typedef struct SherpaNcnnRecognizer SherpaNcnnRecognizer;
@@ -24,6 +25,8 @@
 #define NULL_PTR_2_STR(t) (t != nullptr) ? t : ""
 
 using namespace asr_api;
+
+char g_str_error[1024] = {0};
 
 class ASRRecognizer_Impl {
     public:
@@ -316,10 +319,18 @@ ASR_API_EXPORT void* CreateStreamASRObject(
     const ASR_Parameters* asr_config, 
     const char* authToken,
     const int authTokenLen
-    ) {
+    ) {    
     ASRRecognizer_Impl* asr_recognizer = new ASRRecognizer_Impl();
+    int ret = verify_authtoken(authToken, authTokenLen);
+    if (ret != 0) {
+        delete asr_recognizer;
+        sprintf(g_str_error, "verify auth token failed, error code: %d", ret);
+        return nullptr;
+    }
+
     if (asr_recognizer->Init(*asr_config) != 0) {
         delete asr_recognizer;
+        sprintf(g_str_error, "init asr recognizer failed");
         return nullptr;
     }
     return (void*)asr_recognizer;
@@ -369,6 +380,14 @@ ASR_API_EXPORT int DestroyASRResult(ASR_Result* result){
     result->timestamps = nullptr;
     result->count = 0;
     return 0;
+}
+
+ASR_API_EXPORT const char* get_last_error_message() {
+    return g_str_error;
+}
+
+ASR_API_API const char* GetSDKVersion() {
+    return ASR_API_VERSION;
 }
 
 } //extern "C"

@@ -257,6 +257,12 @@ SHERPA_NCNN_API void DestroyDisplay(SherpaNcnnDisplay *display);
 SHERPA_NCNN_API void SherpaNcnnPrint(SherpaNcnnDisplay *display, int32_t idx,
                                      const char *s);
 
+/// @brief verify whether the signature is valid
+/// @param pSignature 
+/// @param sig_len 
+/// @return 0 if the signature is valid, -1 or other value otherwise
+int verify_authtoken(const char* pSignature, const int sig_len);
+
 }  // namespace asr_api
 
 #endif  // SHERPA_NCNN_C_API_C_API_H_

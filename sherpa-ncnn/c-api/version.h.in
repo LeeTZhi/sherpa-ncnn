@@ -1,0 +1,2 @@
+// version.h.in
+#define ASR_API_VERSION "@ASR_API_VERSION@"

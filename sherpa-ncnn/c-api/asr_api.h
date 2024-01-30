@@ -77,7 +77,7 @@ typedef struct ASR_Result
     int32_t result_size;
     int32_t result_capacity;
     char* text;
-    // 识别结果的时间戳，单位为毫秒
+    // 识别结果的时间戳，单位为秒
     float* timestamps;
     //识别结果数目
     int32_t count;
@@ -91,6 +91,13 @@ typedef struct ASR_Result
 
 ASR_API_EXPORT const char* GetSDKVersion();
 
+/*
+ * CreateStreamASRObject, create the stream ASR object
+    * @param parameters: ASR_Parameters
+    * @param authToken: auth token
+    * @param authTokenLen: auth token length
+    * @return: handle of stream ASR object if success, else return nullptr
+*/
 ASR_API_EXPORT void* CreateStreamASRObject(
     const ASR_Parameters* parameters,
     const char* authToken,
@@ -138,6 +145,8 @@ ASR_API_EXPORT int DestroyASRResult(ASR_Result* result);
 */
 ASR_API_EXPORT int ResetStreamASR(void* streamASR);
 
+
+ASR_API_EXPORT const char* get_last_error_message();
 
 #ifdef __cplusplus
 }
