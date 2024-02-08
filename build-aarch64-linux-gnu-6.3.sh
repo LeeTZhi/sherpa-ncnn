@@ -45,7 +45,7 @@ cmake \
   -DCMAKE_TOOLCHAIN_FILE=../toolchains/aarch64-linux-gnu-6.3.toolchain.cmake \
   ..
 
-make VERBOSE=1 -j4
+make VERBOSE=1 -j8
 make install/strip
 
 cp -v $SHERPA_NCNN_ALSA_LIB_DIR/libasound.so* ./install/lib/

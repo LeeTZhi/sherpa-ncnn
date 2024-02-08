@@ -16,6 +16,10 @@
 
 #include "tokens_file_larger.h"
 #include "version.h"
+
+#ifndef ASR_API_VERSION
+    #define ASR_API_VERSION "0.1.0"
+#endif
 ///model weights header files
 
 //typedef struct SherpaNcnnRecognizer SherpaNcnnRecognizer;
@@ -111,6 +115,12 @@ class ASRRecognizer_Impl {
             }
         }
 
+        void set_auth_token(const char* auth_token, int auth_token_len) {
+            if (auth_token != nullptr && auth_token_len > 0) {
+                memset(str_auth_token_, 0, sizeof(str_auth_token_));
+                memcpy(str_auth_token_, auth_token, std::min(auth_token_len, (int)sizeof(str_auth_token_)));
+            }
+        }
         
     protected:
         SherpaNcnnRecognizer* recognizer_;
@@ -129,17 +139,32 @@ class ASRRecognizer_Impl {
 
         ///for control the total frames number
         uint64_t usage_count_;
-        const uint64_t max_usage_count_ = 20*600; // 5 times per second, 600 seconds per 10 minutes
+        const uint64_t max_usage_count_ = 600; // 5 times per second, 600 per 2 minutes
+
+        char str_auth_token_[2048];
+
     protected: //utils
         bool check_recog_frames_number() {
 
             bool bcount =  usage_count_++ < max_usage_count_;
-        #ifdef __aarch64__
+        #if __aarch64__
+        #if 0 //no license check
             //check date, must before 2024.1.1
             time_t now = time(0);
             tm *ltm = localtime(&now);
             bool bdate = ltm->tm_year < 124;
             return bcount && bdate;
+        #else 
+            (void)bcount;
+            if (usage_count_ % 100 == 0) {
+                int ret = verify_authtoken(str_auth_token_, strlen(str_auth_token_));
+                if (ret != 0) {
+                    sprintf(g_str_error, "verify auth token failed, error code: %d", ret);
+                    return false;
+                }
+            }
+            return true;
+        #endif
         #else 
             return bcount;
         #endif
@@ -246,6 +271,24 @@ int ASRRecognizer_Impl::Init(const ASR_Parameters& asr_config ) {
     return 0;
 }
 
+static size_t calculateLengthWithKnownNulls(const char* str, int knownNulls) {
+    size_t length = 0;
+    int nullCount = 0;
+
+    while (nullCount <= knownNulls) {
+        if (*str == '\0') {
+            nullCount++;
+            if (nullCount > knownNulls) {
+                break;
+            }
+        }
+        length++;
+        str++;
+    }
+
+    return length;
+}
+
 int ASRRecognizer_Impl::StreamRecognize(
     const int16_t* audioData, 
     int audioDataLen, 
@@ -283,9 +326,11 @@ int ASRRecognizer_Impl::StreamRecognize(
         Decode(recognizer_, stream_);
 
         auto results = GetResult(recognizer_, stream_);
-        if (results->text) {
+        if (results->count > 0) {
             ///copy the result to outputs
-            result->text = strdup(results->text);
+            int len = calculateLengthWithKnownNulls(results->text, results->count-1);
+            result->text = (char*)malloc(len+1);
+            memcpy(result->text, results->text, len+1);
             if (results->timestamps) {
                 result->timestamps = (float*)malloc(sizeof(float)*results->count);
                 memcpy(result->timestamps, results->timestamps, sizeof(float)*results->count);
@@ -321,12 +366,16 @@ ASR_API_EXPORT void* CreateStreamASRObject(
     const int authTokenLen
     ) {    
     ASRRecognizer_Impl* asr_recognizer = new ASRRecognizer_Impl();
+
+#if __aarch64__
     int ret = verify_authtoken(authToken, authTokenLen);
     if (ret != 0) {
         delete asr_recognizer;
         sprintf(g_str_error, "verify auth token failed, error code: %d", ret);
         return nullptr;
     }
+    asr_recognizer->set_auth_token(authToken, authTokenLen);
+#endif
 
     if (asr_recognizer->Init(*asr_config) != 0) {
         delete asr_recognizer;

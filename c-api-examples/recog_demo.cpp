@@ -45,13 +45,15 @@ void audioCaptureThread(const std::string& filePath) {
             std::cerr << "End of file reached" << std::endl;
             {
                 std::lock_guard<std::mutex> lock(queueMutex);
-                recordingDone = true;
+                //recordingDone = true;
+                //set to the beginning of the file
+                fseek(fp, 44, SEEK_SET);
             }
             cv.notify_one(); // Notify after setting the flag
-            break;
+            //break;
         }
         ///sleep for 200ms
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
     fclose(fp);
 }
@@ -159,7 +161,7 @@ int main(int32_t argc, char *argv[]) {
     }
     config.hotwords_path = hotwords_file;
     config.hotwords_factor = 2.0f;
-    
+
     //load keywords
     std::vector<std::string> keywords;
 
