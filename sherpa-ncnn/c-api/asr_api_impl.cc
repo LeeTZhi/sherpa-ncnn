@@ -139,7 +139,7 @@ class ASRRecognizer_Impl {
 
         ///for control the total frames number
         uint64_t usage_count_;
-        const uint64_t max_usage_count_ = 600; // 5 times per second, 600 per 2 minutes
+        const uint64_t max_usage_count_ = 10000*600; // 5 times per second, 600 per 2 minutes
 
         char str_auth_token_[2048];
 
@@ -324,31 +324,32 @@ int ASRRecognizer_Impl::StreamRecognize(
     while ( IsReady( recognizer_, stream_) ) {
         ///decode
         Decode(recognizer_, stream_);
-
-        auto results = GetResult(recognizer_, stream_);
-        if (results->count > 0) {
-            ///copy the result to outputs
-            int len = calculateLengthWithKnownNulls(results->text, results->count-1);
-            result->text = (char*)malloc(len+1);
-            memcpy(result->text, results->text, len+1);
-            if (results->timestamps) {
-                result->timestamps = (float*)malloc(sizeof(float)*results->count);
-                memcpy(result->timestamps, results->timestamps, sizeof(float)*results->count);
-            }
-            result->count = results->count;
+    } 
+    
+    auto results = GetResult(recognizer_, stream_);
+    if (results->count > 0) {
+        ///copy the result to outputs
+        int len = calculateLengthWithKnownNulls(results->text, results->count-1);
+        result->text = (char*)malloc(len+1);
+        memcpy(result->text, results->text, len+1);
+        if (results->timestamps) {
+            result->timestamps = (float*)malloc(sizeof(float)*results->count);
+            memcpy(result->timestamps, results->timestamps, sizeof(float)*results->count);
         }
-        ///asign the result to outputs
-        //result->text = results->text;
-        //destroy the results
-        DestroyResult(results);
-
-        /// check endpoint
-        *isEndPoint = ::IsEndpoint(recognizer_, stream_);
-        if (*isEndPoint) {
-            ///reset
-            this->Reset();
-        }
+        result->count = results->count;
     }
+    ///asign the result to outputs
+    //result->text = results->text;
+    //destroy the results
+    DestroyResult(results);
+
+    /// check endpoint
+    *isEndPoint = ::IsEndpoint(recognizer_, stream_);
+    if (*isEndPoint) {
+        ///reset
+        this->Reset();
+    }
+    
 
     ///if is the final 
     if (isFinalStream) {
