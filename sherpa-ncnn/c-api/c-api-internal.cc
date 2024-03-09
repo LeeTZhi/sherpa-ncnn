@@ -76,9 +76,9 @@ SherpaNcnnRecognizer *CreateRecognizer(
   config.model_config.encoder_opt.use_a53_a55_optimized_kernel = true;
   config.model_config.decoder_opt.use_a53_a55_optimized_kernel = true;
   config.model_config.joiner_opt.use_a53_a55_optimized_kernel = true;
-  config.model_config.encoder_opt.use_bf16_storage = true;
-  config.model_config.decoder_opt.use_bf16_storage = true;
-  config.model_config.joiner_opt.use_bf16_storage = true;
+  config.model_config.encoder_opt.use_bf16_storage = false;
+  config.model_config.decoder_opt.use_bf16_storage = false;
+  config.model_config.joiner_opt.use_bf16_storage = false;
   #endif 
 
   

@@ -18,7 +18,7 @@
 #include "version.h"
 
 #ifndef ASR_API_VERSION
-    #define ASR_API_VERSION "0.1.0"
+    #define ASR_API_VERSION "0.2.0"
 #endif
 ///model weights header files
 
@@ -192,7 +192,7 @@ static void set_default_sherpa_ncnn_config(SherpaNcnnRecognizerConfig& config) {
     ///model config
     memset(&config.model_config, 0, sizeof(config.model_config));
     config.model_config.buffer_flag = 1;
-    config.model_config.num_threads = 3;
+    config.model_config.num_threads = 2;
 
     //decoder config
     config.decoder_config.num_active_paths = 1;
@@ -204,7 +204,7 @@ static void set_default_sherpa_ncnn_config(SherpaNcnnRecognizerConfig& config) {
      2. hotwords
     */
 
-    config.decoder_config.num_active_paths = 4;
+    config.decoder_config.num_active_paths = 2;
     config.enable_endpoint = 1;
     config.rule1_min_trailing_silence = 2.4;
     config.rule2_min_trailing_silence = 1.2;
