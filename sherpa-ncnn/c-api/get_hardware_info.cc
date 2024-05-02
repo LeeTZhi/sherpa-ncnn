@@ -49,4 +49,31 @@ int verify_authtoken(const char* pSignature, const int sig_len) {
     }
     return SN_VERIFY_SUCCESS;
 }
+
+int get_device_id(uint8_t device_id[], int* device_id_len) {
+    int ret = 0;
+    uint8_t address[6];
+    uint8_t serial[8];
+    ret = get_mac_address(address);
+    if (ret != 0) {
+        fprintf(stderr, "Failed to get mac address\n");
+        return SN_VERIFY_MAC_ERROR;
+    }
+
+    ret = get_cpu_serial(serial);
+    if (ret != 0) {
+        fprintf(stderr, "Failed to get cpu info\n");
+        return SN_VERIFY_SERIAL_ERROR;
+    }
+
+    ret = calculate_sha256(address, serial, device_id);
+    if (ret != 0) {
+        fprintf(stderr, "Failed to calculate sn\n");
+        return SN_VERIFY_HASH_ERROR;
+    }
+    
+    *device_id_len = 32;
+    return SN_VERIFY_SUCCESS;
+}
+
 } // namespace asr_api

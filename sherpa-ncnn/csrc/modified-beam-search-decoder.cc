@@ -27,6 +27,13 @@
 
 namespace sherpa_ncnn {
 
+static const int32_t exp_lookup_table_bin_ = 1024;
+static float exp_lookup_table_[exp_lookup_table_bin_];
+static const float min_exp_ = -10.0f;
+static const float exp_table_step_inv = exp_lookup_table_bin_ / (min_exp_);
+
+static void LogSoftmaxLRU(float* in_out, int32_t dim);
+
 DecoderResult ModifiedBeamSearchDecoder::GetEmptyResult() const {
   DecoderResult r;
 
@@ -63,7 +70,8 @@ static void LogSoftmax(ncnn::Mat *in_out) {
   int32_t w = in_out->w;
   for (int32_t y = 0; y != h; ++y) {
     float *p = in_out->row(y);
-    LogSoftmax(p, w);
+    //LogSoftmax(p, w);
+    LogSoftmaxLRU(p, w);
   }
 }
 
@@ -277,6 +285,35 @@ void ModifiedBeamSearchDecoder::Decode(ncnn::Mat encoder_out, Stream *s,
 
   result->tokens = std::move(hyp.ys);
   result->num_trailing_blanks = hyp.num_trailing_blanks;
+}
+
+/*
+ * initial the lru table, input is in[min_exp_, 0]
+*/
+void init_exp_lookup_table() {
+  for (int32_t i = 0; i != exp_lookup_table_bin_; ++i) {
+    exp_lookup_table_[i] = std::exp(i / exp_table_step_inv);
+  }
+}
+
+static void LogSoftmaxLRU(float* in_out, int32_t dim) {
+  float m = *std::max_element(in_out, in_out + dim);
+
+  float sum = 0.0;
+  for (int32_t i = 0; i < dim; i++) {
+    float ftemp = in_out[i] - m;
+    if (ftemp < min_exp_) {
+      sum += 0.0f;
+      continue;
+    }
+    int index = static_cast<int32_t>((ftemp ) * exp_table_step_inv);
+    sum += exp_lookup_table_[index];
+  }
+
+  float offset = m + log(sum);
+  for (int32_t i = 0; i < dim; i++) {
+    in_out[i] -= offset;
+  }
 }
 
 }  // namespace sherpa_ncnn

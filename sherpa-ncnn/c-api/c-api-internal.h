@@ -263,6 +263,12 @@ SHERPA_NCNN_API void SherpaNcnnPrint(SherpaNcnnDisplay *display, int32_t idx,
 /// @return 0 if the signature is valid, -1 or other value otherwise
 int verify_authtoken(const char* pSignature, const int sig_len);
 
+/// @brief get device id
+/// @param device_id
+/// @param device_id_len
+/// @return 0 if success, -1 or other value otherwise
+int get_device_id( uint8_t device_id[], int* device_id_len);
+
 }  // namespace asr_api
 
 #endif  // SHERPA_NCNN_C_API_C_API_H_

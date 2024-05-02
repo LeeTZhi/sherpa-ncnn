@@ -14,6 +14,7 @@
 #include <cstring>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "asr_api.h"
 
@@ -140,6 +141,21 @@ int main(int32_t argc, char *argv[]) {
         return -1;
     }
 
+    ///Test for device_id
+    ///only at x86 platform
+#if defined(__i386__) || defined(__x86_64__)
+    uint8_t device_id[64];
+    int device_id_len = 64;
+    int ret = get_device_sn(device_id, &device_id_len);
+    assert(ret == 0 );
+    assert(device_id_len == 32 );
+    printf("device_id: ");
+    for ( int ii = 0; ii < device_id_len; ii++)
+    {
+        printf("%02x", device_id[ii]);
+    }
+    printf("\n");
+#endif 
 
     ASR_Parameters config;
     memset(&config, 0, sizeof(config));

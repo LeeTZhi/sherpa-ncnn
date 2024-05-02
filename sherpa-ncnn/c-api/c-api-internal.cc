@@ -79,11 +79,18 @@ SherpaNcnnRecognizer *CreateRecognizer(
   config.model_config.encoder_opt.use_bf16_storage = false;
   config.model_config.decoder_opt.use_bf16_storage = false;
   config.model_config.joiner_opt.use_bf16_storage = false;
+
+  //use_packing_layout
+  config.model_config.encoder_opt.use_packing_layout = true;
+  config.model_config.decoder_opt.use_packing_layout = true;
+  config.model_config.joiner_opt.use_packing_layout = true;
   #endif 
 
   
 
   // decoder_config
+  //NCNN_LOGE("in config decoder method: %s\n", in_config->decoder_config.decoding_method?in_config->decoder_config.decoding_method:"null");
+
   if ( in_config->decoder_config.decoding_method == nullptr ){
     config.decoder_config.method = "greedy_search";
     config.decoder_config.num_active_paths = 1;
@@ -96,12 +103,15 @@ SherpaNcnnRecognizer *CreateRecognizer(
   
   if (in_config->hotwords_file != nullptr) {
     //beam search
-    config.decoder_config.method = "modified_beam_search";
-    config.decoder_config.num_active_paths = std::max(4, config.decoder_config.num_active_paths);
+    config.decoder_config.method = "modified_beam_search"; //"modified_beam_search";
+    config.decoder_config.num_active_paths = std::max(2, config.decoder_config.num_active_paths);
   }
 
   config.hotwords_file = SHERPA_NCNN_OR(in_config->hotwords_file, "");
-  config.hotwords_score = SHERPA_NCNN_OR(in_config->hotwords_score, 1.5);
+  config.hotwords_score = std::max(in_config->hotwords_score, 1.5f);
+  NCNN_LOGE("hotwords_file: %s, hotwords_score: %f", config.hotwords_file.c_str(), in_config->hotwords_score);
+  //num_active_paths
+  NCNN_LOGE("active_paths: %d", config.decoder_config.num_active_paths);
 
   config.enable_endpoint = in_config->enable_endpoint;
 

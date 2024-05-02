@@ -18,7 +18,7 @@
 #include "version.h"
 
 #ifndef ASR_API_VERSION
-    #define ASR_API_VERSION "0.2.0"
+    #define ASR_API_VERSION "0.2.1"
 #endif
 ///model weights header files
 
@@ -195,7 +195,7 @@ static void set_default_sherpa_ncnn_config(SherpaNcnnRecognizerConfig& config) {
     config.model_config.num_threads = 2;
 
     //decoder config
-    config.decoder_config.num_active_paths = 1;
+    config.decoder_config.num_active_paths = 2;
     config.decoder_config.decoding_method = nullptr;
 
     /* 
@@ -204,11 +204,11 @@ static void set_default_sherpa_ncnn_config(SherpaNcnnRecognizerConfig& config) {
      2. hotwords
     */
 
-    config.decoder_config.num_active_paths = 2;
+    //config.decoder_config.num_active_paths = 1;
     config.enable_endpoint = 1;
-    config.rule1_min_trailing_silence = 2.4;
+    config.rule1_min_trailing_silence = 1.5;
     config.rule2_min_trailing_silence = 1.2;
-    config.rule3_min_utterance_length = 300;
+    config.rule3_min_utterance_length = 200;
 
     config.hotwords_file = nullptr;
     config.hotwords_score = 1.5f;
@@ -262,7 +262,7 @@ int ASRRecognizer_Impl::Init(const ASR_Parameters& asr_config ) {
     config_.rule2_min_trailing_silence = asr_config.rule2_min_threshold;
     config_.rule3_min_utterance_length = asr_config.rule3_min_threshold;
     ///hotwords
-    config_.hotwords_file = asr_config.hotwords_path;
+    config_.hotwords_file = asr_config.hotwords_path?asr_config.hotwords_path:nullptr;
     config_.hotwords_score = asr_config.hotwords_factor;
     
     recognizer_ = CreateRecognizer(&config_);
@@ -436,8 +436,21 @@ ASR_API_EXPORT const char* get_last_error_message() {
     return g_str_error;
 }
 
-ASR_API_API const char* GetSDKVersion() {
+ASR_API_EXPORT const char* GetSDKVersion() {
     return ASR_API_VERSION;
+}
+
+ASR_API_EXPORT int get_device_sn(uint8_t sn[], int* sn_len) {
+    if (sn == nullptr || sn_len == nullptr || *sn_len < 32) {
+        //last error message
+        sprintf(g_str_error, "sn or sn_len is nullptr");
+        return -1;
+    }
+    int ret = get_device_id(sn, sn_len);
+    if (ret != 0) {
+        sprintf(g_str_error, "get device sn failed, error code: %d", ret);
+    }
+    return ret;
 }
 
 } //extern "C"

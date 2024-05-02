@@ -148,6 +148,13 @@ ASR_API_EXPORT int ResetStreamASR(void* streamASR);
 
 ASR_API_EXPORT const char* get_last_error_message();
 
+/* get the sn of the device
+    * @param sn: sn buffer, allocated by caller
+    * @param sn_len: sn buffer length, return the actual length of sn
+    * @return: If Success, return 0, else return other error code
+*/
+ASR_API_EXPORT int get_device_sn(unsigned char sn[], int* sn_len);
+
 #ifdef __cplusplus
 }
 #endif 

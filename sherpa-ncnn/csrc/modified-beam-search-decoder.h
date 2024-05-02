@@ -30,10 +30,14 @@
 
 namespace sherpa_ncnn {
 
+void init_exp_lookup_table();
+
 class ModifiedBeamSearchDecoder : public Decoder {
  public:
   ModifiedBeamSearchDecoder(Model *model, int32_t num_active_paths)
-      : model_(model), num_active_paths_(num_active_paths) {}
+      : model_(model), num_active_paths_(num_active_paths) { 
+        init_exp_lookup_table();
+      }
 
   DecoderResult GetEmptyResult() const override;
 
