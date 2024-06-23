@@ -18,7 +18,7 @@
 #include "version.h"
 
 #ifndef ASR_API_VERSION
-    #define ASR_API_VERSION "0.2.1"
+    #define ASR_API_VERSION "0.2.2"
 #endif
 ///model weights header files
 
@@ -212,6 +212,7 @@ static void set_default_sherpa_ncnn_config(SherpaNcnnRecognizerConfig& config) {
 
     config.hotwords_file = nullptr;
     config.hotwords_score = 1.5f;
+    config.num_threads = 2;
 }
 
 int ASRRecognizer_Impl::Init(const ASR_Parameters& asr_config ) {
@@ -264,7 +265,10 @@ int ASRRecognizer_Impl::Init(const ASR_Parameters& asr_config ) {
     ///hotwords
     config_.hotwords_file = asr_config.hotwords_path?asr_config.hotwords_path:nullptr;
     config_.hotwords_score = asr_config.hotwords_factor;
-    
+    if (asr_config.num_threads > 0 && asr_config.num_threads <= 4) {
+        config_.model_config.num_threads = asr_config.num_threads;
+    }
+    //fprintf(stderr, "num_threads: %d asr config threads: %d\n", config_.num_threads, asr_config.num_threads);
     recognizer_ = CreateRecognizer(&config_);
 
     stream_ = CreateStream(recognizer_);

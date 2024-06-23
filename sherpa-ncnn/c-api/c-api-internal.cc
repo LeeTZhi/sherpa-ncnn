@@ -62,7 +62,7 @@ SherpaNcnnRecognizer *CreateRecognizer(
       in_config->model_config.use_vulkan_compute;
 
   int32_t num_threads = SHERPA_NCNN_OR(in_config->model_config.num_threads, 1);
-
+  //fprintf(stderr, "num_threads: %d\n", num_threads);
   ////tokens config
   config.model_config.tokens_buf = in_config->model_config.tokens_buffer;
   config.model_config.tokens_buf_size = in_config->model_config.tokens_buffer_size;

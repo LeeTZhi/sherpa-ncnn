@@ -166,7 +166,7 @@ int main(int32_t argc, char *argv[]) {
     config.rule1_min_threshold = 2.5f;
     config.rule2_min_threshold = 1.2f;
     config.rule3_min_threshold = 120.0f;
-
+    config.num_threads = 3;
     char* keywords_file = NULL; //所有热词
     char* hotwords_file = NULL; //需要特别关注发音的热词
     if ( argc >= 4 ) {

@@ -172,6 +172,8 @@ if(NOT BUILD_SHARED_LIBS)
   endif()
 endif()
 
+option(USE_SHARED_MBEDTLS_LIBRARY "Use shared mbedtls library" OFF)
+
 #add subdirectory(mbedtls)
 add_subdirectory(external/mbedtls)
 

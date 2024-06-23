@@ -131,6 +131,7 @@ SHERPA_NCNN_API typedef struct SherpaNcnnRecognizerConfig {
 
   /// scale of hotwords, used only when hotwords_file is not empty
   float hotwords_score;
+  int num_threads;
 } SherpaNcnnRecognizerConfig;
 
 SHERPA_NCNN_API typedef struct SherpaNcnnResult {

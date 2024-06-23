@@ -8,9 +8,6 @@
 extern "C" {
 #endif
 
-// See https://github.com/pytorch/pytorch/blob/main/c10/macros/Export.h
-// We will set SHERPA_NCNN_BUILD_SHARED_LIBS and SHERPA_NCNN_BUILD_MAIN_LIB in
-// CMakeLists.txt
 
 #if defined(_WIN32)
 #if defined(ASR_API_BUILD_SHARED_LIBS)
@@ -68,7 +65,8 @@ typedef struct ASR_Parameters
     /// 热词的比例，仅在hotwords_file不为空时使用
     float hotwords_factor;
 
-    char reserved[256];
+    int num_threads; // 线程数
+    char reserved[252];
 } ASR_Parameters;
 
 typedef struct ASR_Result
