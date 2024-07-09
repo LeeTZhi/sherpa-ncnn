@@ -93,6 +93,7 @@ void audioRecognitionThread(void* recognizer, const std::vector<std::string>& ke
     ASR_Result results;
     memset(&results, 0, sizeof(results));
 
+    int frame_count = 0;
     while (!recordingDone ) { 
         std::unique_lock<std::mutex> lock(queueMutex);
         cv.wait(lock, []{ return !audioQueue.empty() || recordingDone; });
@@ -108,54 +109,65 @@ void audioRecognitionThread(void* recognizer, const std::vector<std::string>& ke
             lock.unlock();
 
             // do recognition
-            int ret = StreamRecognize(recognizer, audioChunk.data(), audioChunk.size(), sampleRate, isFinal, &results, &isEnd);
-            if ( isEnd && results.text != NULL) {
-                //find the keywords
-                for ( int i = 0; i < keywords.size(); i++ ) {
-                    int index = findSubstringIndex(results.text, keywords[i].c_str());
-                    if ( index != -1 ) {
-                        printf("find keyword %s at %d timestamp: %f ms\n", keywords[i].c_str(), index, results.timestamps[index]);
-                    }
-                }
-                printf("Final result: %s\n", results.text);
+            int ret = StreamAcceptWav(recognizer, audioChunk.data(), audioChunk.size(), sampleRate);
+            if (ret != 0) {
+                fprintf(stderr, "Failed to recognize\n");
+                break;
             }
-            DestroyASRResult(&results);
+            //get the result
+            /*ret = StreamGetDecodeResult(recognizer, &results, &isEnd);
+            if (results.text != NULL) {
+                printf("Final result: %s\n", results.text);
+            }*/ 
         }
-    }
+        if (++frame_count % 100 == 0) {
+            printf("Processed %d frames\n", frame_count);
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }   
     //padding to recongnize the last chunk
      // add some tail padding
     int16_t data_paddings[8000] = {0};  // 0.5 seconds at 16 kHz sample rate
-    StreamRecognize(recognizer, data_paddings, 8000, sampleRate, 1, &results, &isEnd);
-    if (results.text != NULL) {
-        printf("Final result: %s\n", results.text);
-    }
-    DestroyASRResult(&results);
-
+    StreamAcceptWav(recognizer, data_paddings, 8000, sampleRate);
+    
     ResetStreamASR(recognizer);
 }
 
 
+void GetResultThread(void* recognizer) {
+    int32_t isEnd = 0;
+    ASR_Result results;
+    memset(&results, 0, sizeof(results));
+    int frame_count = 0;
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        int ret = StreamGetDecodeResult(recognizer, &results, &isEnd);
+        //printf("ret: %d is end: %d\n", ret, isEnd);
+        if (ret != 0) {
+            fprintf(stderr, "Failed to get decode result\n");
+            break;
+        }
+        if (isEnd) {
+            printf("Final result: %s\n", results.text);
+        }
+        if (results.text != NULL) {
+            printf("Final result: %s\n", results.text);
+        }
+        if (++frame_count % 100 == 0) {
+            printf("Processed %d frames\n", frame_count);
+        }
+        DestroyASRResult(&results);
+    }
+
+    printf("GetResultThread exit\n");
+}
 int main(int32_t argc, char *argv[]) {
     if (argc < 3 ) {
         fprintf(stderr, "usage: %s\n model.bin wav_path\n", argv[0]);
         return -1;
     }
 
-    ///Test for device_id
-    ///only at x86 platform
-#if defined(__i386__) || defined(__x86_64__)
-    uint8_t device_id[64];
-    int device_id_len = 64;
-    int ret = get_device_sn(device_id, &device_id_len);
-    assert(ret == 0 );
-    assert(device_id_len == 32 );
-    printf("device_id: ");
-    for ( int ii = 0; ii < device_id_len; ii++)
-    {
-        printf("%02x", device_id[ii]);
-    }
-    printf("\n");
-#endif 
 
     ASR_Parameters config;
     memset(&config, 0, sizeof(config));
@@ -209,9 +221,11 @@ int main(int32_t argc, char *argv[]) {
     ///two threads
     std::thread captureThread(audioCaptureThread, wav_filename);
     std::thread recogThread(audioRecognitionThread, recognizer, keywords);
+    std::thread resultThread(GetResultThread, recognizer);
 
     captureThread.join();
     recogThread.join();
+    resultThread.join();
 
     DestroyStreamASRObject(recognizer);
     return 0;

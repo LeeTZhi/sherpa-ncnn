@@ -32,6 +32,8 @@ using namespace asr_api;
 
 char g_str_error[1024] = {0};
 
+static size_t calculateLengthWithKnownNulls(const char* str, int knownNulls);
+
 class ASRRecognizer_Impl {
     public:
         ASRRecognizer_Impl() {
@@ -107,7 +109,12 @@ class ASRRecognizer_Impl {
             );
         int Reset() {
             if ( recognizer_ != nullptr && stream_ != nullptr) {
-                ::Reset(recognizer_, stream_);
+                asr_api::Reset(recognizer_, stream_);
+                asr_api::InputFinished(stream_);
+                //delete stream_;
+                
+                //stream_ = asr_api::CreateStream(recognizer_);
+                
                 return 0;
             }
             else {
@@ -122,6 +129,48 @@ class ASRRecognizer_Impl {
             }
         }
         
+        int AccpetWav(const int16_t* audioData, int audioDataLen, float sampleRate) {
+            if (stream_ == nullptr) {
+                return -1;
+            }
+            std::vector<float> audio_data_float(audioDataLen);
+            for (int i = 0; i < audioDataLen; i++) {
+                audio_data_float[i] = audioData[i]/32768.0f;
+            }
+            asr_api::AcceptWaveform(stream_, sampleRate, &audio_data_float[0], audioDataLen);
+            return 0;
+        }
+
+        int GetStreamResult(ASR_Result* result, int* isEndPoint) {
+            if (result == nullptr) {
+                return -1;
+            }
+            while ( asr_api::IsReady( recognizer_, stream_) ) {
+                ///decode
+                asr_api::Decode(recognizer_, stream_);
+            }
+            auto results = asr_api::GetResult(recognizer_, stream_);
+            if (results->count > 0) {
+                ///copy the result to outputs
+                int len = calculateLengthWithKnownNulls(results->text, results->count-1);
+                result->text = (char*)malloc(len+1);
+                memcpy(result->text, results->text, len);
+                if (results->timestamps) {
+                    result->timestamps = (float*)malloc(sizeof(float)*results->count);
+                    memcpy(result->timestamps, results->timestamps, sizeof(float)*results->count);
+                }
+                result->count = results->count;
+            }
+            ///asign the result to outputs
+            //result->text = results->text;
+            //destroy the results
+            asr_api::DestroyResult(results);
+
+            /// check endpoint
+            *isEndPoint = asr_api::IsEndpoint(recognizer_, stream_);
+            return 0;
+        }
+
     protected:
         SherpaNcnnRecognizer* recognizer_;
         SherpaNcnnStream* stream_;
@@ -456,6 +505,39 @@ ASR_API_EXPORT int get_device_sn(uint8_t sn[], int* sn_len) {
     }
     return ret;
 }
+
+//accept the audio data
+ASR_API_EXPORT int StreamAcceptWav(
+    void* streamASR, 
+    const int16_t* audioData, 
+    int audioDataLen, 
+    float sampleRate
+    ){
+    if (streamASR == nullptr) {
+        //last error message
+        sprintf(g_str_error, "streamASR is nullptr");
+        return -1;
+    }
+
+    ASRRecognizer_Impl* asr_recognizer = (ASRRecognizer_Impl*)streamASR;
+    return asr_recognizer->AccpetWav(audioData, audioDataLen, sampleRate);
+}
+
+//get the decode result
+ASR_API_EXPORT int StreamGetDecodeResult(
+    void* streamASR, 
+    ASR_Result* result,
+    int* isEndPoint
+    ){
+    if (streamASR == nullptr) {
+        //last error message
+        sprintf(g_str_error, "streamASR is nullptr");
+        return -1;
+    }
+
+    ASRRecognizer_Impl* asr_recognizer = (ASRRecognizer_Impl*)streamASR;
+    return asr_recognizer->GetStreamResult(result, isEndPoint);
+} //end of StreamGetDecodeResult
 
 } //extern "C"
 

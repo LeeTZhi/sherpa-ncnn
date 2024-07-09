@@ -131,6 +131,35 @@ ASR_API_EXPORT int StreamRecognize(
     );
 
 /*
+ * Streaming Accept wav data, you can call this function only put the wav data to the stream, it returns quickly
+    * @param streamASR: void*  
+    * @param audioData: audio data
+    * @param audioDataLen: audio data length
+    * @param sampleRate: sample rate
+    * If Success, return 0, else return other error code   
+*/
+ASR_API_EXPORT int StreamAcceptWav(
+    void* streamASR, 
+    const int16_t* audioData, 
+    int audioDataLen, 
+    float sampleRate
+    );
+
+
+/*
+ *Streaming Get the decode result, if isEndPoint is true, an end point is detected
+    * @param streamASR: void*  
+    * @param result: ASR_Result
+    * @param isEndPoint: is end point
+    * If Success, return 0, else return other error code
+*/
+ASR_API_EXPORT int StreamGetDecodeResult(
+    void* streamASR, 
+    ASR_Result* result,
+    int* isEndPoint
+    );
+
+/*
     * release the memory of ASR_Result
     * @param result: ASR_Result
     * If Success, return 0, else return other error code   
