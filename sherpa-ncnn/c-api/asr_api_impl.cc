@@ -18,7 +18,7 @@
 #include "version.h"
 
 #ifndef ASR_API_VERSION
-    #define ASR_API_VERSION "0.2.2"
+    #define ASR_API_VERSION "0.3.0"
 #endif
 ///model weights header files
 
@@ -153,12 +153,14 @@ class ASRRecognizer_Impl {
             if (results->count > 0) {
                 ///copy the result to outputs
                 int len = calculateLengthWithKnownNulls(results->text, results->count-1);
-                result->text = (char*)malloc(len+1);
-                memcpy(result->text, results->text, len);
-                if (results->timestamps) {
-                    result->timestamps = (float*)malloc(sizeof(float)*results->count);
-                    memcpy(result->timestamps, results->timestamps, sizeof(float)*results->count);
+                //result->text = (char*)malloc(len+1);
+                if (strlen(results->text) >= MAX_OUTPUT_LENGTH) {
+                    return -1;
+                    sprintf(g_str_error, "result text length is too long");
                 }
+                sprintf(result->text, "%s", results->text);
+                memcpy(result->timestamps, results->timestamps, sizeof(float)*results->count);
+                
                 result->count = results->count;
             }
             ///asign the result to outputs
@@ -383,12 +385,12 @@ int ASRRecognizer_Impl::StreamRecognize(
     if (results->count > 0) {
         ///copy the result to outputs
         int len = calculateLengthWithKnownNulls(results->text, results->count-1);
-        result->text = (char*)malloc(len+1);
-        memcpy(result->text, results->text, len+1);
-        if (results->timestamps) {
-            result->timestamps = (float*)malloc(sizeof(float)*results->count);
-            memcpy(result->timestamps, results->timestamps, sizeof(float)*results->count);
+        if (strlen(results->text) >= MAX_OUTPUT_LENGTH) {
+                    return -1;
+                    sprintf(g_str_error, "result text length is too long");
         }
+        sprintf(result->text, "%s", results->text);
+        memcpy(result->timestamps, results->timestamps, sizeof(float)*results->count);
         result->count = results->count;
     }
     ///asign the result to outputs
@@ -477,10 +479,7 @@ ASR_API_EXPORT int DestroyASRResult(ASR_Result* result){
     if ( result == nullptr) {
         return 0;
     }
-    free(result->text);
-    result->text = nullptr;
-    free(result->timestamps);
-    result->timestamps = nullptr;
+    
     result->count = 0;
     return 0;
 }

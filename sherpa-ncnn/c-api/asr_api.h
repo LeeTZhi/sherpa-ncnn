@@ -29,6 +29,9 @@ extern "C" {
 #define ASR_API_API ASR_API_IMPORT
 #endif
 
+//define the max output length, about 1 minute audio
+#define MAX_OUTPUT_LENGTH (768u)
+
 enum ASR_Version { FAST=0x01, ACCURATE=0x02 };
 
 ///struct 
@@ -74,9 +77,9 @@ typedef struct ASR_Result
     int32_t size;
     int32_t result_size;
     int32_t result_capacity;
-    char* text;
+    char text[MAX_OUTPUT_LENGTH];
     // 识别结果的时间戳，单位为秒
-    float* timestamps;
+    float timestamps[MAX_OUTPUT_LENGTH];
     //识别结果数目
     int32_t count;
     char reserved[248];
