@@ -18,7 +18,7 @@
 #include "version.h"
 
 #ifndef ASR_API_VERSION
-    #define ASR_API_VERSION "0.3.0"
+    #define ASR_API_VERSION "0.3.1"
 #endif
 ///model weights header files
 
@@ -190,7 +190,7 @@ class ASRRecognizer_Impl {
 
         ///for control the total frames number
         uint64_t usage_count_;
-        const uint64_t max_usage_count_ = 10000*600; // 5 times per second, 600 per 2 minutes
+        const uint64_t max_usage_count_ = 1440*300; // 5 times per second, 600 per 2 minutes
 
         char str_auth_token_[2048];
 
@@ -198,16 +198,16 @@ class ASRRecognizer_Impl {
         bool check_recog_frames_number() {
 
             bool bcount =  usage_count_++ < max_usage_count_;
-        #if __aarch64__
+        #if defined(__aarch64__) || defined(__arm__)
         #if 0 //no license check
-            //check date, must before 2024.1.1
+            //check date, must before 2025.1.1
             time_t now = time(0);
             tm *ltm = localtime(&now);
-            bool bdate = ltm->tm_year < 124;
+            bool bdate = ltm->tm_year < 125;
             return bcount && bdate;
         #else 
             (void)bcount;
-            if (usage_count_ % 100 == 0) {
+            if (usage_count_ % 400 == 0) {
                 int ret = verify_authtoken(str_auth_token_, strlen(str_auth_token_));
                 if (ret != 0) {
                     sprintf(g_str_error, "verify auth token failed, error code: %d", ret);
@@ -538,6 +538,15 @@ ASR_API_EXPORT int StreamGetDecodeResult(
     return asr_recognizer->GetStreamResult(result, isEndPoint);
 } //end of StreamGetDecodeResult
 
+//Verify the license 
+ASR_API_EXPORT int VerifyLicense(const char* authToken, const int authTokenLen) {
+    int ret = verify_authtoken(authToken, authTokenLen);
+    if (ret != 0) {
+        sprintf(g_str_error, "verify auth token failed, error code: %d", ret);
+    }
+    return ret;
+}
+
 } //extern "C"
 
 //1 byte alignment
@@ -559,7 +568,7 @@ static void process_buffer_with_magic_number(uint8_t* buffer, uint32_t buffer_si
 
 #define SURE_READ(is, cnt) do { \
     if (is) \
-      std::cout << "all characters read successfully."<<std::endl; \
+      ; \
     else    \
       {     \
         std::cout << "read "<< (cnt) <<" but error: only " << is.gcount() << " could be read"<<std::endl; \
